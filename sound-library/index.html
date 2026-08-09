@@ -294,29 +294,58 @@ function setURL(queryString) {
             return `${m}:${s}`;
         }
 
-        // --- AUTH ---
         async function handleLogin() {
-            const user = document.getElementById('usernameInput').value.trim();
-            if(!user) return;
-            currentUser = user;
-            userData = await loadUser(user);
-            
-            // Validate missing structures for older DB users
-            if(!userData.playlists) userData.playlists = [];
-            
-            document.getElementById('avatarBtn').innerText = user[0].toUpperCase();
-            document.getElementById('menuAvatar').innerText = user[0].toUpperCase();
-            document.getElementById('menuUsername').innerText = user;
-            document.getElementById('loginOverlay').classList.add('hidden');
-            applyTheme(userData.theme);
-            goHome();
-        }
-        function handleLogout() {
-            currentUser = null;
-            document.getElementById('loginOverlay').classList.remove('hidden');
-            document.getElementById('accountMenu').classList.add('hidden');
-            stopAudio();
-        }
+    const user = document.getElementById('usernameInput').value.trim();
+    if(!user) return;
+    currentUser = user;
+    userData = await loadUser(user);
+    
+    // Validate missing structures for older DB users
+    if(!userData.playlists) userData.playlists = [];
+    
+    document.getElementById('avatarBtn').innerText = user[0].toUpperCase();
+    document.getElementById('menuAvatar').innerText = user[0].toUpperCase();
+    document.getElementById('menuUsername').innerText = user;
+    document.getElementById('loginOverlay').classList.add('hidden');
+    applyTheme(userData.theme);
+
+    // FIX: Remember the user for next time
+    localStorage.setItem('babelUsername', user);
+
+    // FIX: Check if they clicked a shared link, otherwise go home
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedVideoId = urlParams.get('v');
+    if (sharedVideoId) {
+        goWatch(sharedVideoId);
+    } else {
+        goHome();
+    }
+}
+async function checkSavedLogin() {
+    const savedUser = localStorage.getItem('babelUsername');
+    if (savedUser) {
+        document.getElementById('usernameInput').value = savedUser;
+        await handleLogin();
+    }
+}
+function handleLogout() {
+    currentUser = null;
+    // FIX: Forget the user on logout
+    localStorage.removeItem('babelUsername');
+    
+    document.getElementById('loginOverlay').classList.remove('hidden');
+    document.getElementById('accountMenu').classList.add('hidden');
+    stopAudio();
+}
+
+// Add this to your window.onload or initialization code to trigger the auto-login:
+async function checkSavedLogin() {
+    const savedUser = localStorage.getItem('babelUsername');
+    if (savedUser) {
+        document.getElementById('usernameInput').value = savedUser;
+        await handleLogin();
+    }
+}
         function toggleAccountMenu() { document.getElementById('accountMenu').classList.toggle('hidden'); }
         async function toggleTheme() {
             userData.theme = userData.theme === 'dark' ? 'light' : 'dark';
@@ -567,32 +596,50 @@ async function downloadAudio() {
     btn.disabled = true;
 
     try {
-        const duration = currentSequence.length * FRAME_DURATION;
+        const totalFrames = Math.floor(currentSequence.length / 62);
+        const duration = totalFrames * FRAME_DURATION;
         const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100 * duration, 44100);
 
-        for (let i = 0; i < currentSequence.length; i++) {
-            const char = currentSequence.charAt(i);
-            if (!char || char === '0') continue;
-            const val = charToBinary(char);
-            if(val === 0) continue;
+        for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
+            const blockStart = frameIdx * 62;
+            const blockEnd = blockStart + 62;
+            const block = currentSequence.substring(blockStart, blockEnd);
+            
+            if (!block || block.length < 62) continue;
 
-            const time = i * FRAME_DURATION;
-            const freq = 200 + ((val / 61) * 3800);
+            const time = frameIdx * FRAME_DURATION;
+            let activePitches = 0;
+            const pitches = [];
 
-            const osc = offlineCtx.createOscillator();
-            const gain = offlineCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.value = freq;
+            for (let i = 1; i < 62; i++) {
+                if (block[i] !== '0' && block[i] === BASE62[i]) {
+                    pitches.push(i);
+                    activePitches++;
+                }
+            }
 
-            gain.gain.setValueAtTime(0, time);
-            gain.gain.linearRampToValueAtTime(0.1, time + 0.005);
-            gain.gain.setValueAtTime(0.1, time + FRAME_DURATION - 0.005);
-            gain.gain.linearRampToValueAtTime(0, time + FRAME_DURATION);
+            if (activePitches === 0) continue;
+            const volumePerPitch = 0.5 / Math.max(1, activePitches);
 
-            osc.connect(gain);
-            gain.connect(offlineCtx.destination);
-            osc.start(time);
-            osc.stop(time + FRAME_DURATION);
+            pitches.forEach(pitchIndex => {
+                const freq = 200 + ((pitchIndex / 61) * 3800);
+                const osc = offlineCtx.createOscillator();
+                const gain = offlineCtx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+
+                gain.gain.setValueAtTime(0, time);
+                gain.gain.linearRampToValueAtTime(volumePerPitch, time + 0.005);
+                gain.gain.setValueAtTime(volumePerPitch, time + FRAME_DURATION - 0.005);
+                gain.gain.linearRampToValueAtTime(0, time + FRAME_DURATION);
+
+                osc.connect(gain);
+                gain.connect(offlineCtx.destination);
+                
+                osc.start(time);
+                osc.stop(time + FRAME_DURATION);
+            });
         }
 
         const renderedBuffer = await offlineCtx.startRendering();
@@ -603,7 +650,7 @@ async function downloadAudio() {
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
-        a.download = `Signal_${currentSequence.substring(0,10)}.wav`;
+        a.download = `Signal_${currentSequence.substring(0, 10)}.wav`;
         document.body.appendChild(a);
         a.click();
         URL.revokeObjectURL(url);
@@ -809,7 +856,7 @@ function audioBufferToWav(buffer) {
         }
 
         function scheduler() {
-            const totalFrames = currentSequence.length;
+            const totalFrames = Math.floor(currentSequence.length / 62);
             while (nextNoteTime < audioCtx.currentTime + 0.1 && currentFrame < totalFrames) {
                 scheduleFrame(currentFrame, nextNoteTime);
                 nextNoteTime += FRAME_DURATION;
