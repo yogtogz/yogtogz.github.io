@@ -1168,7 +1168,7 @@ function drawOscilloscope(timeOffset) {
 
         // --- INIT ---
         async function init() {
-            try { const res = await fetch('config.json'); if(res.ok) config = {...config, ...(await res.json())}; } catch(e){}
+            //try { const res = await fetch('config.json'); if(res.ok) config = {...config, ...(await res.json())}; } catch(e){}
             try { const res = await fetch('nicknames.json'); if(res.ok) nicknames = await res.json(); } catch(e){}
 
             await initDB();
