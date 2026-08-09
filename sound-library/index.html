@@ -430,13 +430,18 @@ async function checkSavedLogin() {
     
     refreshRecs();
 
-    // Populate nicknames
+    // Populate nicknames (randomly pick up to 3)
     const nickContainer = document.getElementById('homeNicknames');
-    const nickKeys = Object.keys(nicknames);
+    let nickKeys = Object.keys(nicknames);
+    
     if(nickKeys.length === 0) {
         nickContainer.innerHTML = '<p style="color:var(--text-secondary); grid-column: 1/-1;">No nicknamed sounds found in nicknames.json.</p>';
     } else {
-        nickKeys.forEach(id => nickContainer.appendChild(createCard(id)));
+        // Shuffle the keys and take the first 3
+        nickKeys.sort(() => 0.5 - Math.random());
+        const selectedNicks = nickKeys.slice(0, 3);
+        
+        selectedNicks.forEach(id => nickContainer.appendChild(createCard(id)));
     }
 }
 
