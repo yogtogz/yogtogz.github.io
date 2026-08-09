@@ -235,26 +235,53 @@ function setURL(queryString) {
 }
 
         // --- AUDIO MATH & DECODING ---
-        function sanitizeId(id) {
-    if (!id) id = "";
+        function sanitizeId(input) {
+    if (!input) input = "0";
     
-    // Keep only valid base62 characters, replace symbols with '0'
-    let cleaned = id.replace(/[^a-zA-Z0-9]/g, '0');
-    
-    // Ensure length is a multiple of 62 so every frame has a complete block
-    let remainder = cleaned.length % 62;
-    if (remainder !== 0) {
-        cleaned = cleaned.padEnd(cleaned.length + (62 - remainder), '0');
-    }
-    
-    // Ensure at least one full 62-character frame if too short
-    if (cleaned.length < 62) {
-        cleaned = cleaned.padEnd(62, '0');
-    }
-    
-    return cleaned;
-}
+    // Remove invalid characters, keeping only alphanumeric
+    let cleanInput = input.replace(/[^a-zA-Z0-9]/g, '');
+    if (cleanInput.length === 0) cleanInput = "0";
 
+    // Determine how many 62-character blocks (frames) are needed
+    // Each block can hold up to 61 unique active character slots (index 0 is reserved)
+    let blocksCount = Math.ceil(cleanInput.length / 61);
+    let finalId = "";
+
+    for (let b = 0; b < blocksCount; b++) {
+        // Initialize a 62-character block filled with '0's
+        let blockArr = new Array(62).fill('0');
+        
+        // Grab the chunk of text for this specific frame block
+        let chunk = cleanInput.substr(b * 61, 61);
+        
+        for (let i = 0; i < chunk.length; i++) {
+            let char = chunk[i];
+            let baseIndex = BASE62.indexOf(char);
+            
+            if (baseIndex > 0) {
+                // Place the character at its exact BASE62 index position
+                blockArr[baseIndex] = char;
+            } else if (baseIndex === 0) {
+                blockArr[0] = '0';
+            } else {
+                // Fallback for any edge cases
+                let fallbackIndex = (char.charCodeAt(0) % 61) + 1;
+                blockArr[fallbackIndex] = char;
+            }
+        }
+        
+        // Append this completed 62-character block to the final ID string
+        finalId += blockArr.join('');
+    }
+
+    // Ensure final length is a clean multiple of 62
+    let remainder = finalId.length % 62;
+    if (remainder !== 0) {
+        finalId = finalId.padEnd(finalId.length + (62 - remainder), '0');
+    }
+
+    return finalId;
+}
         function charToBinary(char) {
             let idx = BASE62.indexOf(char);
             if(idx === -1) idx = 0; 
