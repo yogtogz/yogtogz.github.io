@@ -1141,7 +1141,7 @@ function drawOscilloscope(timeOffset) {
             else if(urlParams.get('search')) goSearch(urlParams.get('search'));
             else if(urlParams.get('view') === 'playlists') goPlaylists();
             else if(urlParams.get('view') === 'favorites') goFavorites();
-            else document.getElementById('loginOverlay').classList.remove('hidden'); 
+            //else document.getElementById('loginOverlay').classList.remove('hidden'); 
             
             window.addEventListener('popstate', () => {
                 const params = new URLSearchParams(window.location.search);
