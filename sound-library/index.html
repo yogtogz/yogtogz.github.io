@@ -236,11 +236,37 @@ function setURL(queryString) {
 
         // --- AUDIO MATH & DECODING ---
         function sanitizeId(id) {
-            let safeId = id.replace(/[^a-zA-Z0-9]/g, '0');
-            if (safeId.length < 1) safeId = safeId.padEnd(1, '0');
-            //if (safeId.length > 3000) safeId = safeId.substring(0, 3000);
-            return safeId;
+    if (!id) id = "";
+    
+    // Replace invalid characters with '0'
+    let cleaned = id.replace(/[^a-zA-Z0-9]/g, '0');
+    
+    // Ensure length is a multiple of 62 so every frame has a complete block
+    let remainder = cleaned.length % 62;
+    if (remainder !== 0) {
+        cleaned = cleaned.padEnd(cleaned.length + (62 - remainder), '0');
+    }
+    
+    // Ensure at least one full 62-character frame if empty or too short
+    if (cleaned.length < 62) {
+        cleaned = cleaned.padEnd(62, '0');
+    }
+    
+    // Enforce the strict 62-character per frame rule:
+    // Character at index `i` of a block must match BASE62[i], otherwise normalize to '0'
+    let finalId = "";
+    for (let i = 0; i < cleaned.length; i++) {
+        const blockIndex = i % 62;
+        const char = cleaned[i];
+        if (char === BASE62[blockIndex]) {
+            finalId += char;
+        } else {
+            finalId += '0';
         }
+    }
+    
+    return finalId;
+}
 
         function charToBinary(char) {
             let idx = BASE62.indexOf(char);
