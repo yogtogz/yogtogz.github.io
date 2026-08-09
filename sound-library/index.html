@@ -261,10 +261,7 @@ function setURL(queryString) {
     // If no target given (like in recommendations), generate a varied mix of lengths
     let frames = targetFrames;
     if (!frames) {
-        const rand = Math.random();
-        if (rand < 0.5) frames = Math.floor(Math.random() * 50) + 10; // 50%: 1s to 5s
-        else if (rand < 0.8) frames = Math.floor(Math.random() * 300) + 50; // 30%: 5s to 30s
-        else frames = Math.floor(Math.random() * 3000) + 1; // 20%: up to 5 minutes
+        frames = Math.floor(Math.random() * 3000) + 1;
     }
 
     let id = "";
