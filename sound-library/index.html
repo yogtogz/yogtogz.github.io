@@ -237,8 +237,8 @@ function setURL(queryString) {
         // --- AUDIO MATH & DECODING ---
         function sanitizeId(id) {
             let safeId = id.replace(/[^a-zA-Z0-9]/g, '0');
-            if (safeId.length < 10) safeId = safeId.padEnd(10, '0');
-            if (safeId.length > 3000) safeId = safeId.substring(0, 3000);
+            if (safeId.length < 1) safeId = safeId.padEnd(1, '0');
+            //if (safeId.length > 3000) safeId = safeId.substring(0, 3000);
             return safeId;
         }
 
@@ -262,7 +262,6 @@ function setURL(queryString) {
     let frames = targetFrames;
     if (!frames) {
         frames = Math.floor(Math.random() * 3000) + 1;
-        console.log(`Inside the IF statement: ${frames}`)
     }
     console.log(frames)
     let id = "";
