@@ -236,7 +236,6 @@ function setURL(queryString) {
         async function afterInitDB() {
             await initDB();
             checkSavedLogin();
-            goHome();
         }
 window.addEventListener('DOMContentLoaded', () => {
     afterInitDB();
@@ -450,6 +449,7 @@ async function checkSavedLogin() {
         
         selectedNicks.forEach(id => nickContainer.appendChild(createCard(id)));
     }
+        RefreshRecs();
 }
 
         function refreshRecs() {
