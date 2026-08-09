@@ -153,7 +153,7 @@
             <span>Sound Library of Babel</span>
         </div>
         <form class="search-bar" onsubmit="event.preventDefault(); triggerSearch();">
-            <input type="text" id="searchInput" placeholder="Search string...">
+            <input type="text" id="searchInput" placeholder="Search string and separate frames using |">
             <button type="submit">🔍</button>
         </form>
         <div class="avatar" id="avatarBtn" onclick="toggleAccountMenu()">?</div>
@@ -519,19 +519,32 @@ async function checkSavedLogin() {
         }
 
         function goSearch(query) {
-            clearNav();
-            setURL(`?search=${query}`);
-            let clean = sanitizeId(query);
-            
-            let html = `<h2 class="section-title">Search Results</h2><div class="list-view">`;
-            document.getElementById('mainContent').innerHTML = html + `</div>`;
-            const container = document.querySelector('.list-view');
-            
-            container.appendChild(createCard(clean, true, "Exact Match"));
-            for(let i=0; i<8; i++) {
-                container.appendChild(createCard(mutateId(clean), true, "Similar Data"));
-            }
-        }
+    clearNav();
+    setURL(`?search=${encodeURIComponent(query)}`);
+    
+    // Split the query by '|' to allow multi-frame definitions (e.g., "frame1|frame2")
+    const parts = query.split('|');
+    let clean = "";
+    
+    parts.forEach(part => {
+        // Run each part through sanitizeId so it builds a proper 62-character frame block
+        clean += sanitizeId(part);
+    });
+    
+    // Fallback safety check if clean is empty
+    if (!clean) {
+        clean = sanitizeId("0");
+    }
+    
+    let html = `<h2 class="section-title">Search Results</h2><div class="list-view">`;
+    document.getElementById('mainContent').innerHTML = html + `</div>`;
+    const container = document.querySelector('.list-view');
+    
+    container.appendChild(createCard(clean, true, "Exact Match"));
+    for(let i = 0; i < 8; i++) {
+        container.appendChild(createCard(mutateId(clean), true, "Similar Data"));
+    }
+}
 
         function goPlaylistView(plDataStr) {
             clearNav();
