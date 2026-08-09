@@ -322,6 +322,7 @@ async function checkSavedLogin() {
     const savedUser = localStorage.getItem('babelUsername');
     if (savedUser) {
         document.getElementById('usernameInput').value = savedUser;
+        document.getElementById('loginOverlay').classList.add('hidden');
         await handleLogin();
     }
 }
