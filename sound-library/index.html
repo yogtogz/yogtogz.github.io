@@ -49,24 +49,25 @@
         .sidebar { width: 240px; padding: 12px; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
         .sidebar-item { padding: 10px 12px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 16px; }
         .sidebar-item:hover, .sidebar-item.active { background: var(--secondary-bg); font-weight: bold; }
-        .content { flex: 1; padding: 24px; overflow-y: auto; }
+        .content { flex: 1; padding: 24px; overflow-y: auto; overflow-x: hidden; }
 
-        /* Home Sections */
+        /* Generic Views */
         .section-title { font-size: 20px; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; }
-        @media(max-width: 1000px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+        
+        /* Fixed Responsive Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
         
         /* Video Cards */
-        .video-card { display: flex; flex-direction: column; gap: 12px; cursor: pointer; }
+        .video-card { display: flex; flex-direction: column; gap: 12px; cursor: pointer; height: 100%; }
         .thumbnail-wrapper { width: 100%; aspect-ratio: 16/9; background: var(--player-bg); border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; position: relative; }
         .thumbnail-canvas { width: 100%; height: 100%; display: block; }
-        .card-title { font-size: 16px; font-weight: bold; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .card-title { font-size: 16px; font-weight: bold; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
         
-        .refresh-btn { display: block; width: 100%; padding: 12px; background: var(--secondary-bg); border-radius: 20px; text-align: center; margin-bottom: 40px; font-weight: bold; border: 1px solid var(--border-color); }
+        .refresh-btn { display: block; width: 100%; padding: 14px; background: var(--secondary-bg); border-radius: 20px; text-align: center; margin-top: 32px; font-weight: bold; border: 1px solid var(--border-color); font-size: 16px; }
         .refresh-btn:hover { background: var(--hover-bg); }
 
         /* Playlist Tabs */
-        .tabs { display: flex; gap: 12px; margin-bottom: 16px; }
+        .tabs { display: flex; gap: 12px; margin-bottom: 24px; }
         .tab { padding: 8px 16px; background: var(--secondary-bg); border-radius: 20px; cursor: pointer; border: 1px solid var(--border-color); font-weight: bold; }
         .tab.active { background: var(--text-primary); color: var(--bg-color); }
 
@@ -91,11 +92,15 @@
         .action-btn:hover { background: var(--hover-bg); }
         .description-box { background: var(--secondary-bg); padding: 16px; border-radius: 12px; font-size: 14px; word-break: break-all; }
 
-        /* List View */
+        /* List View (Search & Up Next) */
         .list-view { display: flex; flex-direction: column; gap: 16px; max-width: 1000px; }
-        .list-card { display: flex; gap: 16px; cursor: pointer; }
+        .list-card { display: flex; gap: 16px; cursor: pointer; align-items: flex-start; }
         .list-card .thumbnail-wrapper { width: 360px; height: 202px; flex-shrink: 0; }
         .badge { background: var(--secondary-bg); padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 8px; display: inline-block; border: 1px solid var(--border-color); }
+        
+        /* Compact List Cards for Sidebar */
+        #upNextContainer .list-card .thumbnail-wrapper { width: 160px; height: 90px; }
+        #upNextContainer .list-card .card-title { font-size: 14px; }
 
         /* Modals */
         .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; }
@@ -151,8 +156,10 @@
     <div class="layout">
         <div class="sidebar">
             <div class="sidebar-item active" id="navHome" onclick="goHome()">🏠 Home</div>
-            <div class="sidebar-item" onclick="goRandom()">🎲 Random Sound</div>
+            <div class="sidebar-item" id="navPlaylists" onclick="goPlaylists()">📋 Playlists</div>
+            <div class="sidebar-item" id="navFavs" onclick="goFavorites()">❤️ Favorites</div>
             <hr style="width: 100%; border: 0.5px solid var(--border-color); margin: 8px 0;">
+            <div class="sidebar-item" onclick="goRandom()">🎲 Random Sound</div>
         </div>
 
         <div class="content" id="mainContent">
@@ -174,11 +181,11 @@
         // Audio State
         let audioCtx, isPlaying = false;
         let currentSequence = "";
-        let currentOscillators = []; // Array of active oscillators per frequency
+        let currentOscillators = []; 
         let nextNoteTime = 0, currentFrame = 0, scheduleTimer = null;
         let visualizerCanvas, visualizerCtx;
         let animationFrameReq;
-        let seekTime = 0; // For tracking visualizer offset during playback
+        let seekTime = 0; 
 
         // --- INDEXED DB ---
         let db;
@@ -203,10 +210,16 @@
             tx.oncomplete = resolve;
         });
 
+        // --- URL ROUTING HELPER ---
+        // Safely updates the URL without removing the subdirectory structure you are hosted in
+        function setURL(queryString) {
+            const currentPath = window.location.pathname;
+            window.history.pushState({}, '', currentPath + queryString);
+        }
+
         // --- AUDIO MATH & DECODING ---
         function sanitizeId(id) {
-            // Force min 10 chars (1 sec), max 3000 chars (5 mins)
-            let safeId = id.replace(/[^a-zA-Z0-9]/g, '0'); // Invalid rounds down to 0 (silence)
+            let safeId = id.replace(/[^a-zA-Z0-9]/g, '0');
             if (safeId.length < 10) safeId = safeId.padEnd(10, '0');
             if (safeId.length > 3000) safeId = safeId.substring(0, 3000);
             return safeId;
@@ -214,8 +227,8 @@
 
         function charToBinary(char) {
             let idx = BASE62.indexOf(char);
-            if(idx === -1) idx = 0; // fallback to silence
-            return idx; // Integer 0-61
+            if(idx === -1) idx = 0; 
+            return idx; 
         }
 
         function mutateId(id) {
@@ -253,6 +266,10 @@
             if(!user) return;
             currentUser = user;
             userData = await loadUser(user);
+            
+            // Validate missing structures for older DB users
+            if(!userData.playlists) userData.playlists = [];
+            
             document.getElementById('avatarBtn').innerText = user[0].toUpperCase();
             document.getElementById('menuAvatar').innerText = user[0].toUpperCase();
             document.getElementById('menuUsername').innerText = user;
@@ -274,7 +291,7 @@
         }
         function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme); }
 
-        // --- ROUTING ---
+        // --- NAVIGATION & VIEWS ---
         function clearNav() {
             document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
             stopAudio();
@@ -284,57 +301,70 @@
             goWatch(generateRandomId());
         }
 
+        // View 1: Home (Recommendations only, button at the bottom)
         function goHome() {
             clearNav();
             document.getElementById('navHome').classList.add('active');
-            window.history.pushState({}, '', '/');
+            setURL('');
             
             let html = `
-                <h2 class="section-title">Recommended</h2>
+                <h2 class="section-title">Recommended Signals</h2>
                 <div class="grid" id="homeRecs"></div>
                 <button class="refresh-btn" onclick="refreshRecs()">Refresh Recommendations</button>
-                
-                <h2 class="section-title">Favorites</h2>
-                <div class="grid" id="homeFavs"></div>
-
-                <h2 class="section-title" style="margin-top:24px;">Playlists</h2>
-                <div class="tabs">
-                    <div class="tab active" id="tabRandom" onclick="switchPlaylistTab('random')">Random Playlists</div>
-                    <div class="tab" id="tabYour" onclick="switchPlaylistTab('your')">Your Playlists</div>
-                </div>
-                <div class="grid" id="homePlaylists"></div>
             `;
             document.getElementById('mainContent').innerHTML = html;
-            
             refreshRecs();
-            renderFavorites();
-            switchPlaylistTab('random');
         }
 
         function refreshRecs() {
             const container = document.getElementById('homeRecs');
             if(!container) return;
             container.innerHTML = '';
-            for(let i=0; i<6; i++) container.appendChild(createCard(generateRandomId()));
+            // Generate 12 varied sizes
+            for(let i=0; i<12; i++) container.appendChild(createCard(generateRandomId()));
         }
 
-        function renderFavorites() {
-            const container = document.getElementById('homeFavs');
-            if(!container) return;
-            container.innerHTML = '';
+        // View 2: Favorites
+        function goFavorites() {
+            clearNav();
+            document.getElementById('navFavs').classList.add('active');
+            setURL('?view=favorites');
+
+            let html = `<h2 class="section-title">Your Favorites</h2><div class="grid" id="favContainer"></div>`;
+            document.getElementById('mainContent').innerHTML = html;
+
+            const container = document.getElementById('favContainer');
             if(userData.favorites.length === 0) {
                 container.innerHTML = `<p style="color:var(--text-secondary); grid-column: 1/-1;">No favorites yet.</p>`;
-                return;
+            } else {
+                userData.favorites.forEach(id => container.appendChild(createCard(id)));
             }
-            userData.favorites.slice(0, 6).forEach(id => container.appendChild(createCard(id)));
+        }
+
+        // View 3: Playlists (Generated Groups & Yours)
+        function goPlaylists() {
+            clearNav();
+            document.getElementById('navPlaylists').classList.add('active');
+            setURL('?view=playlists');
+
+            let html = `
+                <h2 class="section-title">Playlists</h2>
+                <div class="tabs">
+                    <div class="tab active" id="tabGenerated" onclick="switchPlaylistTab('generated')">Generated Groups</div>
+                    <div class="tab" id="tabYour" onclick="switchPlaylistTab('your')">Your Playlists</div>
+                </div>
+                <div class="grid" id="playlistContainer"></div>
+            `;
+            document.getElementById('mainContent').innerHTML = html;
+            switchPlaylistTab('generated');
         }
 
         function switchPlaylistTab(tab) {
-            document.getElementById('tabRandom').classList.remove('active');
+            document.getElementById('tabGenerated').classList.remove('active');
             document.getElementById('tabYour').classList.remove('active');
-            document.getElementById(tab === 'random' ? 'tabRandom' : 'tabYour').classList.add('active');
+            document.getElementById(tab === 'generated' ? 'tabGenerated' : 'tabYour').classList.add('active');
             
-            const container = document.getElementById('homePlaylists');
+            const container = document.getElementById('playlistContainer');
             container.innerHTML = '';
 
             if (tab === 'your') {
@@ -344,10 +374,16 @@
                     userData.playlists.forEach((p, idx) => container.appendChild(createPlaylistCard(p, idx)));
                 }
             } else {
-                for(let i=0; i<3; i++) {
-                    let randPl = { name: "Archive Batch #" + Math.floor(Math.random()*1000), items: [generateRandomId(), generateRandomId(), generateRandomId()] };
-                    container.appendChild(createPlaylistCard(randPl, -1));
-                }
+                // Generate categorical groups by prefix (1 to 5 chars)
+                const groupPrefixes = ["A", "7", "AA", "B2", "123", "XYZ", "9999", "OMEGA"];
+                groupPrefixes.forEach(prefix => {
+                    const pl = { name: `All ${prefix} Signals`, items: [] };
+                    const count = Math.floor(Math.random() * 5) + 3; // 3 to 7 items per group
+                    for(let i=0; i<count; i++) {
+                        pl.items.push(sanitizeId(prefix + generateRandomId(Math.floor(Math.random()*40)+10)));
+                    }
+                    container.appendChild(createPlaylistCard(pl, -1));
+                });
             }
         }
 
@@ -358,7 +394,7 @@
 
         function goSearch(query) {
             clearNav();
-            window.history.pushState({}, '', `?search=${query}`);
+            setURL(`?search=${query}`);
             let clean = sanitizeId(query);
             
             let html = `<h2 class="section-title">Search Results</h2><div class="list-view">`;
@@ -387,7 +423,7 @@
         function goWatch(id) {
             clearNav();
             id = sanitizeId(id);
-            window.history.pushState({}, '', `?v=${id}`);
+            setURL(`?v=${id}`);
             currentSequence = id;
             const isFav = userData.favorites.includes(id);
 
@@ -429,9 +465,6 @@
             const upNext = document.getElementById('upNextContainer');
             for(let i=0; i<6; i++) {
                 let c = createCard(generateRandomId(), true);
-                c.style.flexDirection = 'row';
-                c.querySelector('.thumbnail-wrapper').style.width = '140px';
-                c.querySelector('.thumbnail-wrapper').style.height = '78px';
                 upNext.appendChild(c);
             }
 
@@ -440,7 +473,6 @@
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
             
-            // Draw initial frame static
             drawOscilloscope(0);
         }
 
@@ -464,7 +496,6 @@
                 </div>
             `;
             
-            // Render thumbnail waveform after appending
             setTimeout(() => drawWaveformThumbnail(document.getElementById(canvasId), id), 0);
             return wrapper;
         }
@@ -473,7 +504,6 @@
             const wrapper = document.createElement('div');
             wrapper.className = 'video-card';
             
-            // Encode object to pass via click
             const plData = encodeURIComponent(JSON.stringify(pl));
             wrapper.onclick = () => goPlaylistView(plData);
 
@@ -481,7 +511,7 @@
             wrapper.innerHTML = `
                 <div class="thumbnail-wrapper">
                     <canvas class="thumbnail-canvas" id="${canvasId}"></canvas>
-                    <div style="position:absolute; bottom:0; width:100%; background:rgba(0,0,0,0.8); color:white; text-align:center; padding:4px; font-size:12px;">
+                    <div style="position:absolute; bottom:0; width:100%; background:rgba(0,0,0,0.8); color:white; text-align:center; padding:6px; font-size:12px; font-weight:bold;">
                         PLAYLIST (${pl.items.length})
                     </div>
                 </div>
@@ -498,7 +528,7 @@
         function resizeCanvas() {
             if(!visualizerCanvas) return;
             visualizerCanvas.width = visualizerCanvas.parentElement.clientWidth;
-            visualizerCanvas.height = visualizerCanvas.parentElement.clientHeight - 48; // minus controls
+            visualizerCanvas.height = visualizerCanvas.parentElement.clientHeight - 48;
         }
 
         function drawWaveformThumbnail(canvas, id, isPlaylist = false) {
@@ -523,14 +553,13 @@
                         yOffset += Math.sign(Math.sin(x * 0.05 * (FREQS[i]/100))) * 15;
                     }
                 }
-                if(val === 0) yOffset = 0; // Flatline if silence
+                if(val === 0) yOffset = 0; 
                 
                 if(x===0) ctx.moveTo(x, canvas.height/2 + yOffset);
                 else ctx.lineTo(x, canvas.height/2 + yOffset);
             }
             ctx.stroke();
 
-            // If playlist, draw a secondary staggered line
             if (isPlaylist) {
                 ctx.strokeStyle = '#555';
                 ctx.beginPath();
@@ -555,7 +584,6 @@
             ctx.fillStyle = 'rgba(0,0,0,0.4)';
             ctx.fillRect(0, 0, width, height);
 
-            // Get current active char
             const frameIdx = Math.floor(timeOffset / FRAME_DURATION);
             const char = currentSequence.charAt(frameIdx) || '0';
             const val = charToBinary(char);
@@ -568,7 +596,6 @@
                 let yOffset = 0;
                 for(let i=0; i<6; i++) {
                     if (val & (1 << i)) {
-                        // Scrolling math: x + (time * speed)
                         const scrollX = x + (timeOffset * 500); 
                         yOffset += Math.sign(Math.sin(scrollX * 0.02 * (FREQS[i]/100))) * (height/15);
                     }
@@ -581,7 +608,7 @@
             ctx.stroke();
         }
 
-        // --- AUDIO ENGINE (Lookahead Scheduler) ---
+        // --- AUDIO ENGINE ---
         function togglePlay() {
             if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const btn = document.getElementById('playBtn');
@@ -591,7 +618,6 @@
                 btn.classList.remove('playing');
                 clearInterval(scheduleTimer);
                 cancelAnimationFrame(animationFrameReq);
-                // Stop all active oscillators immediately
                 currentOscillators.forEach(osc => { try{osc.stop()}catch(e){} });
                 currentOscillators = [];
             } else {
@@ -601,7 +627,7 @@
                 
                 currentFrame = Math.floor(seekTime / FRAME_DURATION);
                 nextNoteTime = audioCtx.currentTime;
-                scheduler(); // start lookahead
+                scheduler(); 
                 scheduleTimer = setInterval(scheduler, 25);
                 animateVisualizer();
             }
@@ -614,14 +640,13 @@
 
         function scheduler() {
             const totalFrames = currentSequence.length;
-            // Schedule ahead by 0.1 seconds
             while (nextNoteTime < audioCtx.currentTime + 0.1 && currentFrame < totalFrames) {
                 scheduleFrame(currentFrame, nextNoteTime);
                 nextNoteTime += FRAME_DURATION;
                 currentFrame++;
             }
             if (currentFrame >= totalFrames && nextNoteTime < audioCtx.currentTime) {
-                stopAudio(); // Ended
+                stopAudio();
                 updateProgressUI(totalFrames * FRAME_DURATION);
             }
         }
@@ -629,17 +654,16 @@
         function scheduleFrame(frameIdx, time) {
             const char = currentSequence.charAt(frameIdx);
             const val = charToBinary(char);
-            if(val === 0) return; // Silence
+            if(val === 0) return; 
 
             for(let i=0; i<6; i++) {
                 if (val & (1 << i)) {
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
                     
-                    osc.type = 'square'; // Robotic
+                    osc.type = 'square'; 
                     osc.frequency.value = FREQS[i];
                     
-                    // Simple envelope to prevent clicking
                     gain.gain.setValueAtTime(0, time);
                     gain.gain.linearRampToValueAtTime(0.1, time + 0.01);
                     gain.gain.setValueAtTime(0.1, time + FRAME_DURATION - 0.01);
@@ -654,13 +678,11 @@
                 }
             }
 
-            // Cleanup array
             currentOscillators = currentOscillators.filter(osc => osc.context.currentTime < time + FRAME_DURATION + 1);
         }
 
         function animateVisualizer() {
             if(!isPlaying) return;
-            // Calculate exact playback time based on scheduled audio
             const elapsedTime = seekTime + (audioCtx.currentTime - (nextNoteTime - (currentFrame * FRAME_DURATION) + seekTime)); 
             const actualTime = Math.max(0, elapsedTime);
             
@@ -691,7 +713,6 @@
             seekTime = percent * total;
             
             if(isPlaying) {
-                // Restart playback from new position
                 togglePlay(); 
                 togglePlay();
             } else {
@@ -751,14 +772,20 @@
             await initDB();
 
             const urlParams = new URLSearchParams(window.location.search);
+            
+            // Check params or default to overlay if no user
             if(urlParams.get('v')) goWatch(urlParams.get('v'));
             else if(urlParams.get('search')) goSearch(urlParams.get('search'));
+            else if(urlParams.get('view') === 'playlists') goPlaylists();
+            else if(urlParams.get('view') === 'favorites') goFavorites();
             else document.getElementById('loginOverlay').classList.remove('hidden'); 
             
             window.addEventListener('popstate', () => {
                 const params = new URLSearchParams(window.location.search);
                 if(params.get('v')) goWatch(params.get('v'));
                 else if(params.get('search')) goSearch(params.get('search'));
+                else if(params.get('view') === 'playlists') goPlaylists();
+                else if(params.get('view') === 'favorites') goFavorites();
                 else goHome();
             });
         }
