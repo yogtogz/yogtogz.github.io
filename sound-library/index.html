@@ -233,12 +233,13 @@ function setURL(queryString) {
     url.search = queryString; // Only changes the ? variables, keeps subfolders intact
     window.history.pushState({}, '', url.toString());
 }
-        async function checkSavedLoginAfterInitDB() {
+        async function afterInitDB() {
             await initDB();
             checkSavedLogin();
+            goHome();
         }
 window.addEventListener('DOMContentLoaded', () => {
-    checkSavedLoginAfterInitDB();
+    afterInitDB();
 });
         // --- AUDIO MATH & DECODING ---
         function sanitizeId(input) {
