@@ -233,9 +233,12 @@ function setURL(queryString) {
     url.search = queryString; // Only changes the ? variables, keeps subfolders intact
     window.history.pushState({}, '', url.toString());
 }
+        async function checkSavedLoginAfterInitDB() {
+            await initDB();
+            checkSavedLogin();
+        }
 window.addEventListener('DOMContentLoaded', () => {
-    await initDB();
-    checkSavedLogin();
+    checkSavedLoginAfterInitDB();
 });
         // --- AUDIO MATH & DECODING ---
         function sanitizeId(input) {
@@ -1148,6 +1151,10 @@ function drawOscilloscope(timeOffset) {
             });
         }
         window.onload = init;
+        // Attach functions to the global window object so HTML onclick attributes can access them
+window.handleLogin = handleLogin;
+window.handleLogout = handleLogout;
+window.checkSavedLogin = checkSavedLogin;
     </script>
 </body>
 </html>
