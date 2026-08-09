@@ -234,6 +234,7 @@ function setURL(queryString) {
     window.history.pushState({}, '', url.toString());
 }
 window.addEventListener('DOMContentLoaded', () => {
+    await initDB();
     checkSavedLogin();
 });
         // --- AUDIO MATH & DECODING ---
