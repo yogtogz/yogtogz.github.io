@@ -233,7 +233,9 @@ function setURL(queryString) {
     url.search = queryString; // Only changes the ? variables, keeps subfolders intact
     window.history.pushState({}, '', url.toString());
 }
-
+window.addEventListener('DOMContentLoaded', () => {
+    checkSavedLogin();
+});
         // --- AUDIO MATH & DECODING ---
         function sanitizeId(input) {
     if (!input) input = "0";
