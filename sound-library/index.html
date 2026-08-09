@@ -553,7 +553,7 @@ async function checkSavedLogin() {
             switchPlaylistTab('generated');
         }
 
-        function switchPlaylistTab(tab) {
+function switchPlaylistTab(tab) {
     document.getElementById('tabGenerated').classList.remove('active');
     document.getElementById('tabYour').classList.remove('active');
     document.getElementById(tab === 'generated' ? 'tabGenerated' : 'tabYour').classList.add('active');
@@ -562,12 +562,25 @@ async function checkSavedLogin() {
     container.innerHTML = '';
 
     if (tab === 'your') {
-        if(userData.playlists.length === 0) {
+        if (!userData || !userData.playlists || userData.playlists.length === 0) {
             container.innerHTML = `<p style="color:var(--text-secondary); grid-column: 1/-1;">You haven't created any playlists.</p>`;
         } else {
             userData.playlists.forEach((p, idx) => container.appendChild(createPlaylistCard(p, idx)));
         }
     } else {
+        // --- 1. ALWAYS ADD NICKNAMED SOUNDS FIRST ---
+        // Grab all IDs that currently have a nickname
+        const nickKeys = (typeof nicknames !== 'undefined' && nicknames) ? Object.keys(nicknames) : [];
+        
+        const nicknamedPlaylist = { 
+            name: "Nicknamed Sounds", 
+            items: nickKeys // Includes ALL of them
+        };
+        // Append it as the very first card
+        container.appendChild(createPlaylistCard(nicknamedPlaylist, -1));
+
+
+        // --- 2. GENERATE RANDOM PLAYLISTS AFTER ---
         // Generate 8 random groups with prefixes between 1 and 5 characters
         for (let g = 0; g < 8; g++) {
             let prefixLen = Math.floor(Math.random() * 5) + 1;
@@ -578,7 +591,7 @@ async function checkSavedLogin() {
             
             const pl = { name: `Some ${prefix} Signals`, items: [] };
             const count = Math.floor(Math.random() * 5) + 3; 
-            for(let i=0; i<count; i++) {
+            for(let i = 0; i < count; i++) {
                 pl.items.push(sanitizeId(prefix + generateRandomId(Math.floor(Math.random()*40)+10)));
             }
             container.appendChild(createPlaylistCard(pl, -1));
