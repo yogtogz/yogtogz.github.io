@@ -348,6 +348,7 @@ function setURL(queryString) {
 
     // FIX: Remember the user for next time
     localStorage.setItem('babelUsername', user);
+    console.log(user)
 
     // FIX: Check if they clicked a shared link, otherwise go home
     const urlParams = new URLSearchParams(window.location.search);
@@ -360,7 +361,9 @@ function setURL(queryString) {
 }
 async function checkSavedLogin() {
     const savedUser = localStorage.getItem('babelUsername');
+    console.log(savedUser)
     if (savedUser) {
+        console.log(savedUser)
         document.getElementById('usernameInput').value = savedUser;
         document.getElementById('loginOverlay').classList.add('hidden');
         await handleLogin();
