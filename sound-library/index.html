@@ -262,9 +262,9 @@ function setURL(queryString) {
     let frames = targetFrames;
     if (!frames) {
         frames = Math.floor(Math.random() * 3000) + 1;
-        console.log(frames)
+        console.log(`Inside the IF statement: ${frames}`)
     }
-
+    console.log(frames)
     let id = "";
     for (let i = 0; i < frames; i++) {
         for (let j = 0; j < 62; j++) {
