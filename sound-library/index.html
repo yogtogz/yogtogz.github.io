@@ -975,7 +975,7 @@ function drawOscilloscope(timeOffset) {
             const pFill = document.getElementById('progressFill');
             if(!tDisp || !pFill) return;
             
-            const total = currentSequence.length * FRAME_DURATION;
+            const total = (currentSequence.length / 62) * FRAME_DURATION;
             const safeTime = Math.min(time, total);
             tDisp.innerText = `${formatTime(safeTime)} / ${formatTime(total)}`;
             pFill.style.width = `${(safeTime / total) * 100}%`;
@@ -987,7 +987,7 @@ function drawOscilloscope(timeOffset) {
             const rect = bar.getBoundingClientRect();
             const percent = (e.clientX - rect.left) / rect.width;
             
-            const total = currentSequence.length * FRAME_DURATION;
+            const total = (currentSequence.length / 62) * FRAME_DURATION;
             seekTime = percent * total;
             
             if(isPlaying) {
