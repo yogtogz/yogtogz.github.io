@@ -357,7 +357,25 @@ window.addEventListener('DOMContentLoaded', () => {
             const s = Math.floor(seconds % 60).toString().padStart(2, '0');
             return `${m}:${s}`;
         }
+        async function loadNicknames() {
+    try {
+        // 1. Wait for the fetch request to complete
+        const response = await fetch('nicknames.json');
+        
+        // Optional: Check if the file loaded successfully
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
 
+        // 2. Wait for the body text to be parsed into a JSON object
+        nicknames = await response.json();
+        
+        console.log("Nicknames loaded successfully:", nicknames);
+    } catch (error) {
+        console.error("Failed to load nicknames:", error);
+        nicknames = {}; // Fallback empty object
+    }
+}
         async function handleLogin() {
     const user = document.getElementById('usernameInput').value.trim();
     if(!user) return;
