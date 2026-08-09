@@ -449,12 +449,30 @@ async function checkSavedLogin() {
 }
 
         function refreshRecs() {
-            const container = document.getElementById('homeRecs');
-            if(!container) return;
-            container.innerHTML = '';
-            // Generate 12 varied sizes
-            for(let i=0; i<12; i++) container.appendChild(createCard(generateRandomId()));
+    // 1. Refresh regular recommendations
+    const container = document.getElementById('homeRecs');
+    if(container) {
+        container.innerHTML = '';
+        // Generate 12 varied sizes
+        for(let i = 0; i < 12; i++) {
+            container.appendChild(createCard(generateRandomId()));
         }
+    }
+
+    // 2. Refresh Nicknamed Sounds (pick 3 random ones)
+    const nickContainer = document.getElementById('homeNicknames');
+    if(nickContainer) {
+        nickContainer.innerHTML = '';
+        const nickKeys = Object.keys(nicknames);
+        if(nickKeys.length === 0) {
+            nickContainer.innerHTML = '<p style="color:var(--text-secondary); grid-column: 1/-1;">No nicknamed sounds found.</p>';
+        } else {
+            const shuffled = [...nickKeys].sort(() => 0.5 - Math.random());
+            const selected = shuffled.slice(0, 3);
+            selected.forEach(id => nickContainer.appendChild(createCard(id)));
+        }
+    }
+}
 
         // View 2: Favorites
         function goFavorites() {
