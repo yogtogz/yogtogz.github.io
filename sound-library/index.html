@@ -57,14 +57,14 @@
         /* Fixed Responsive Grid */
         .grid { 
     display: grid; 
-    grid-template-columns: repeat(3, 1fr); 
+    grid-template-columns: repeat(3, minmax(0, 1fr)); 
     gap: 16px; 
     margin-bottom: 24px; 
     width: 100%; 
     box-sizing: border-box;
 }
-        @media(max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-@media(max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+@media(max-width: 900px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media(max-width: 600px) { .grid { grid-template-columns: minmax(0, 1fr); } }
         
         /* Video Cards */
         .video-card { display: flex; flex-direction: column; gap: 12px; cursor: pointer; height: 100%; }
@@ -163,7 +163,7 @@
                 <div class="avatar" id="menuAvatar">?</div>
                 <strong id="menuUsername">Username</strong>
             </div>
-            <div class="menu-item" onclick="toggleTheme()">🌓 Appearance: Device theme</div>
+            <div class="menu-item" id="themeMenuText" onclick="toggleTheme()">🌓 Appearance: Dark theme</div>
             <div class="menu-item" onclick="handleLogout()">🚪 Sign out</div>
         </div>
     </header>
@@ -306,7 +306,13 @@ function setURL(queryString) {
             applyTheme(userData.theme);
             await saveUser();
         }
-        function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme); }
+        function applyTheme(theme) { 
+    document.documentElement.setAttribute('data-theme', theme);
+    const themeText = document.getElementById('themeMenuText');
+    if(themeText) {
+        themeText.innerText = `🌓 Appearance: ${theme.charAt(0).toUpperCase() + theme.slice(1)} theme`;
+    }
+}
 
         // --- NAVIGATION & VIEWS ---
         function clearNav() {
@@ -392,15 +398,36 @@ function setURL(queryString) {
                 }
             } else {
                 // Generate categorical groups by prefix (1 to 5 chars)
-                const groupPrefixes = ["A", "7", "AA", "B2", "123", "XYZ", "9999", "OMEGA"];
-                groupPrefixes.forEach(prefix => {
-                    const pl = { name: `All ${prefix} Signals`, items: [] };
-                    const count = Math.floor(Math.random() * 5) + 3; // 3 to 7 items per group
-                    for(let i=0; i<count; i++) {
-                        pl.items.push(sanitizeId(prefix + generateRandomId(Math.floor(Math.random()*40)+10)));
-                    }
-                    container.appendChild(createPlaylistCard(pl, -1));
-                });
+                // Inside switchPlaylistTab function:
+const groupPrefixes = [
+  // --- Single Letters (26 items) ---
+  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", 
+  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+
+  // --- Double Letters (26 items) ---
+  "AA", "BB", "CC", "DD", "EE", "FF", "GG", "HH", "II", "JJ", "KK", "LL", "MM", 
+  "NN", "OO", "PP", "QQ", "RR", "SS", "TT", "UU", "VV", "WW", "XX", "YY", "ZZ",
+
+  // --- Triple Letters (26 items) ---
+  "AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ", "KKK", "LLL", "MMM", 
+  "NNN", "OOO", "PPP", "QQQ", "RRR", "SSS", "TTT", "UUU", "VVV", "WWW", "XXX", "YYY", "ZZZ",
+
+  // --- Quadruple Letters (26 items) ---
+  "AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG", "HHHH", "IIII", "JJJJ", "KKKK", "LLLL", "MMMM", 
+  "NNNN", "OOOO", "PPPP", "QQQQ", "RRRR", "SSSS", "TTTT", "UUUU", "VVVV", "WWWW", "XXXX", "YYYY", "ZZZZ",
+
+  // --- Numbers & Alphanumeric Mix (11 items) ---
+  "7", "B2", "C3", "D4", "X9", "123", "777", "9999", "XYZ", "ALPHA", "OMEGA"
+];
+
+groupPrefixes.forEach(prefix => {
+    const pl = { name: `Some ${prefix} Signals`, items: [] };
+    const count = Math.floor(Math.random() * 5) + 3;
+    for(let i=0; i<count; i++) {
+        pl.items.push(sanitizeId(prefix + generateRandomId(Math.floor(Math.random()*40)+10)));
+    }
+    container.appendChild(createPlaylistCard(pl, -1));
+});
             }
         }
 
@@ -552,33 +579,27 @@ function setURL(queryString) {
     if(!canvas) return;
     const ctx = canvas.getContext('2d');
     
-    // Fallback sizes if it renders too quickly before CSS catches up
-    const w = canvas.parentElement.clientWidth || 360;
-    const h = canvas.parentElement.clientHeight || 202;
+    const wrapper = canvas.parentElement;
+    const w = wrapper && wrapper.clientWidth ? wrapper.clientWidth : 300;
+    const h = wrapper && wrapper.clientHeight ? wrapper.clientHeight : 169;
     canvas.width = w; 
     canvas.height = h;
     
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, w, h);
     
-    const firstChar = id.charAt(0);
+    const firstChar = id.charAt(0) || '1';
     const val = charToBinary(firstChar);
     if(val === 0) return;
     
-    const rand = mulberry32(val * 1000);
-    const numTones = Math.floor(rand() * 5) + 1;
-    const freqs = [];
-    for(let i=0; i<numTones; i++) freqs.push(100 + (rand() * 9900));
+    const freq = 200 + ((val / 61) * 3800);
     
     ctx.strokeStyle = isPlaylist ? 'var(--text-secondary)' : 'var(--accent)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     
     for(let x=0; x<w; x++) {
-        let yOffset = 0;
-        freqs.forEach(freq => {
-            yOffset += Math.sin(x * 0.05 * (freq/1000)) * (h / (numTones * 4));
-        });
+        const yOffset = Math.sin(x * 0.05 * (freq / 500)) * (h / 4);
         if(x===0) ctx.moveTo(x, h/2 + yOffset);
         else ctx.lineTo(x, h/2 + yOffset);
     }
@@ -588,12 +609,9 @@ function setURL(queryString) {
         ctx.strokeStyle = '#555';
         ctx.beginPath();
         for(let x=0; x<w; x++) {
-            let yOffset = 0;
-            freqs.forEach(freq => {
-                yOffset += Math.cos((x+50) * 0.05 * (freq/1000)) * (h / (numTones * 4));
-            });
-            if(x===0) ctx.moveTo(x, h/2 + yOffset + 20);
-            else ctx.lineTo(x, h/2 + yOffset + 20);
+            const yOffset = Math.cos((x+50) * 0.05 * (freq / 500)) * (h / 4);
+            if(x===0) ctx.moveTo(x, h/2 + yOffset + 10);
+            else ctx.lineTo(x, h/2 + yOffset + 10);
         }
         ctx.stroke();
     }
@@ -693,7 +711,6 @@ function mulberry32(a) {
     }
 }
 
-// Replace scheduleFrame
 function scheduleFrame(frameIdx, time) {
     const char = currentSequence.charAt(frameIdx);
     if (!char || char === '0') return; 
@@ -701,34 +718,27 @@ function scheduleFrame(frameIdx, time) {
     const val = charToBinary(char);
     if(val === 0) return; 
 
-    // Seed the randomness using the character value and time position
-    const rand = mulberry32(val * 1000 + frameIdx);
+    // Map character directly to a clean pitch between 200Hz and 4000Hz
+    const freq = 200 + ((val / 61) * 3800);
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
     
-    // Depending on luck, this frame plays 1 to 5 concurrent pitches
-    const numTones = Math.floor(rand() * 5) + 1;
+    osc.type = 'sine'; // Pure beep wave
+    osc.frequency.value = freq;
+    
+    // Smooth envelope to prevent clicking
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(0.1, time + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + FRAME_DURATION - 0.02);
+    gain.gain.setValueAtTime(0, time + FRAME_DURATION);
 
-    for(let i=0; i<numTones; i++) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        
-        osc.type = 'sine'; // Genuine clean beep
-        
-        // Massive pitch range depending on luck: 100Hz to 10,000Hz
-        osc.frequency.value = 100 + (rand() * 9900); 
-        
-        // Envelope to stop clicking and balance volume for polyphony
-        gain.gain.setValueAtTime(0, time);
-        gain.gain.linearRampToValueAtTime(0.05, time + 0.01);
-        gain.gain.setValueAtTime(0.05, time + FRAME_DURATION - 0.01);
-        gain.gain.linearRampToValueAtTime(0, time + FRAME_DURATION);
-
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        
-        osc.start(time);
-        osc.stop(time + FRAME_DURATION);
-        currentOscillators.push(osc);
-    }
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    osc.start(time);
+    osc.stop(time + FRAME_DURATION);
+    currentOscillators.push(osc);
 
     currentOscillators = currentOscillators.filter(osc => osc.context.currentTime < time + FRAME_DURATION + 1);
 }
@@ -740,7 +750,7 @@ function drawOscilloscope(timeOffset) {
     const width = visualizerCanvas.width;
     const height = visualizerCanvas.height;
 
-    if (width === 0 || height === 0) resizeCanvas(); // Failsafe if hidden
+    if (width === 0 || height === 0) resizeCanvas();
 
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.fillRect(0, 0, width, height);
@@ -757,25 +767,16 @@ function drawOscilloscope(timeOffset) {
         ctx.moveTo(0, height/2);
         ctx.lineTo(width, height/2);
     } else {
-        const rand = mulberry32(val * 1000 + frameIdx);
-        const numTones = Math.floor(rand() * 5) + 1;
-        const freqs = [];
-        for(let i=0; i<numTones; i++) freqs.push(100 + (rand() * 9900));
-
+        const freq = 200 + ((val / 61) * 3800);
         for(let x=0; x<width; x++) {
-            let yOffset = 0;
-            const scrollX = x + (timeOffset * 500); 
-            freqs.forEach(freq => {
-                // Map the massively high frequencies down visually so they don't look like static
-                yOffset += Math.sin(scrollX * 0.0005 * (freq/100)) * (height / (numTones * 4));
-            });
+            const scrollX = x + (timeOffset * 300); 
+            const yOffset = Math.sin(scrollX * 0.01 * (freq / 500)) * (height / 3);
             if(x===0) ctx.moveTo(x, height/2 + yOffset);
             else ctx.lineTo(x, height/2 + yOffset);
         }
     }
     ctx.stroke();
 }
-
         function animateVisualizer() {
             if(!isPlaying) return;
             const elapsedTime = seekTime + (audioCtx.currentTime - (nextNoteTime - (currentFrame * FRAME_DURATION) + seekTime)); 
