@@ -257,12 +257,28 @@ function setURL(queryString) {
             return sanitizeId(arr.join(''));
         }
 
-        function generateRandomId(length = null) {
-    // Generates between 1 and 3000 characters (0.1 seconds to 5 minutes)
-    const len = length || (Math.floor(Math.random() * 30000) + 1);
-    let str = "";
-    for(let i=0; i<len; i++) str += BASE62[Math.floor(Math.random() * 62)];
-    return sanitizeId(str);
+       function generateRandomId(targetFrames = null) {
+    // If no target given (like in recommendations), generate a varied mix of lengths
+    let frames = targetFrames;
+    if (!frames) {
+        const rand = Math.random();
+        if (rand < 0.5) frames = Math.floor(Math.random() * 50) + 10; // 50%: 1s to 5s
+        else if (rand < 0.8) frames = Math.floor(Math.random() * 300) + 50; // 30%: 5s to 30s
+        else frames = Math.floor(Math.random() * 3000) + 1; // 20%: up to 5 minutes
+    }
+
+    let id = "";
+    for (let i = 0; i < frames; i++) {
+        for (let j = 0; j < 62; j++) {
+            // 15% chance for a pitch to be active so it sounds like music/signals and not pure static
+            if (j === 0 || Math.random() > 0.15) {
+                id += "0";
+            } else {
+                id += BASE62[j]; // Places the specific character at its specific pitch index
+            }
+        }
+    }
+    return sanitizeId(id);
 }
 
         function getTitle(id) {
@@ -477,7 +493,7 @@ function setURL(queryString) {
                     <canvas id="visualizer"></canvas>
                     <div class="controls">
                         <div class="play-btn" id="playBtn" onclick="togglePlay()"></div>
-                        <div class="time-display" id="timeDisplay">0:00 / ${formatTime(id.length * FRAME_DURATION)}</div>
+<div class="time-display" id="timeDisplay">0:00 / ${formatTime((id.length / 62) * FRAME_DURATION)}</div>
                         <div class="progress-bar" id="progressBar" onclick="seekAudio(event)">
                             <div class="progress-fill" id="progressFill"></div>
                         </div>
@@ -674,28 +690,33 @@ function audioBufferToWav(buffer) {
        function drawWaveformThumbnail(canvas, id, isPlaylist = false) {
     if(!canvas) return;
     const ctx = canvas.getContext('2d');
-    
-    // Hardcode internal resolution so it never renders invisibly. CSS will scale it.
-    const w = 360;
-    const h = 202;
-    canvas.width = w; 
-    canvas.height = h;
+    const w = 360, h = 202;
+    canvas.width = w; canvas.height = h;
     
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, w, h);
     
-    const firstChar = id.charAt(0) || '1';
-    const val = charToBinary(firstChar);
-    if(val === 0) return;
+    // Look at the first block of the video for the thumbnail
+    const block = id.substring(0, 62) || '0'.repeat(62);
+    const activeFreqs = [];
+    for (let i = 1; i < 62; i++) {
+        if (block[i] !== '0' && block[i] === BASE62[i]) {
+            activeFreqs.push(200 + ((i / 61) * 3800));
+        }
+    }
     
-    const freq = 200 + ((val / 61) * 3800);
-    
+    // Fallback if the first frame is entirely silent
+    if(activeFreqs.length === 0) activeFreqs.push(1000); 
+
     ctx.strokeStyle = isPlaylist ? 'var(--text-secondary)' : 'var(--accent)';
     ctx.lineWidth = 4;
     ctx.beginPath();
     
     for(let x=0; x<w; x++) {
-        const yOffset = Math.sin(x * 0.05 * (freq / 500)) * (h / 4);
+        let yOffset = 0;
+        activeFreqs.forEach(freq => {
+            yOffset += Math.sin(x * 0.05 * (freq / 500)) * (h / 4) / activeFreqs.length;
+        });
         if(x===0) ctx.moveTo(x, h/2 + yOffset);
         else ctx.lineTo(x, h/2 + yOffset);
     }
@@ -705,7 +726,10 @@ function audioBufferToWav(buffer) {
         ctx.strokeStyle = '#555';
         ctx.beginPath();
         for(let x=0; x<w; x++) {
-            const yOffset = Math.cos((x+50) * 0.05 * (freq / 500)) * (h / 4);
+            let yOffset = 0;
+            activeFreqs.forEach(freq => {
+                yOffset += Math.cos((x+50) * 0.05 * (freq / 500)) * (h / 4) / activeFreqs.length;
+            });
             if(x===0) ctx.moveTo(x, h/2 + yOffset + 20);
             else ctx.lineTo(x, h/2 + yOffset + 20);
         }
@@ -717,35 +741,35 @@ function audioBufferToWav(buffer) {
     const ctx = visualizerCtx;
     const width = visualizerCanvas.width;
     const height = visualizerCanvas.height;
-
-    if (width === 0 || height === 0) resizeCanvas(); // Failsafe if hidden
+    if (width === 0 || height === 0) resizeCanvas();
 
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.fillRect(0, 0, width, height);
 
     const frameIdx = Math.floor(timeOffset / FRAME_DURATION);
-    const char = currentSequence.charAt(frameIdx) || '0';
-    const val = charToBinary(char);
+    const block = currentSequence.substring(frameIdx * 62, (frameIdx + 1) * 62) || '0'.repeat(62);
 
     ctx.strokeStyle = 'var(--accent)';
     ctx.lineWidth = 2;
     ctx.beginPath();
 
-    if (val === 0) {
+    const activeFreqs = [];
+    for (let i = 1; i < 62; i++) {
+        if (block[i] !== '0' && block[i] === BASE62[i]) {
+            activeFreqs.push(200 + ((i / 61) * 3800));
+        }
+    }
+
+    if (activeFreqs.length === 0) {
         ctx.moveTo(0, height/2);
         ctx.lineTo(width, height/2);
     } else {
-        const rand = mulberry32(val * 1000 + frameIdx);
-        const numTones = Math.floor(rand() * 5) + 1;
-        const freqs = [];
-        for(let i=0; i<numTones; i++) freqs.push(100 + (rand() * 9900));
-
         for(let x=0; x<width; x++) {
+            const scrollX = x + (timeOffset * 300); 
             let yOffset = 0;
-            const scrollX = x + (timeOffset * 500); 
-            freqs.forEach(freq => {
-                // Map the massively high frequencies down visually so they don't look like static
-                yOffset += Math.sin(scrollX * 0.0005 * (freq/100)) * (height / (numTones * 4));
+            // Superposition of all active sine waves
+            activeFreqs.forEach(freq => {
+                yOffset += Math.sin(scrollX * 0.01 * (freq / 500)) * (height / 3) / activeFreqs.length;
             });
             if(x===0) ctx.moveTo(x, height/2 + yOffset);
             else ctx.lineTo(x, height/2 + yOffset);
@@ -808,32 +832,49 @@ function mulberry32(a) {
 }
 
 function scheduleFrame(frameIdx, time) {
-    const char = currentSequence.charAt(frameIdx);
-    if (!char || char === '0') return; 
+    const blockStart = frameIdx * 62;
+    const blockEnd = blockStart + 62;
+    const block = currentSequence.substring(blockStart, blockEnd);
 
-    const val = charToBinary(char);
-    if(val === 0) return; 
+    // Stop if we reach the end of the sequence
+    if (!block || block.length < 62) return; 
 
-    const freq = 200 + ((val / 61) * 3800);
+    let activePitches = 0;
+    const pitches = [];
 
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    
-    osc.type = 'sine'; 
-    osc.frequency.value = freq;
-    
-    // Quick 5ms attack/release to stop popping, but maintains 100% volume for the entire beep
-    gain.gain.setValueAtTime(0, time);
-    gain.gain.linearRampToValueAtTime(0.1, time + 0.005);
-    gain.gain.setValueAtTime(0.1, time + FRAME_DURATION - 0.005);
-    gain.gain.linearRampToValueAtTime(0, time + FRAME_DURATION);
+    // Loop through indexes 1 to 61 of this specific frame's block
+    for (let i = 1; i < 62; i++) {
+        if (block[i] !== '0' && block[i] === BASE62[i]) {
+            pitches.push(i);
+            activePitches++;
+        }
+    }
 
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    
-    osc.start(time);
-    osc.stop(time + FRAME_DURATION);
-    currentOscillators.push(osc);
+    if (activePitches === 0) return;
+
+    // Dynamically lower the volume based on how many pitches play so speakers don't explode
+    const volumePerPitch = 0.5 / Math.max(1, activePitches);
+
+    pitches.forEach(pitchIndex => {
+        const freq = 200 + ((pitchIndex / 61) * 3800);
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        osc.type = 'sine'; 
+        osc.frequency.value = freq;
+        
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(volumePerPitch, time + 0.005);
+        gain.gain.setValueAtTime(volumePerPitch, time + FRAME_DURATION - 0.005);
+        gain.gain.linearRampToValueAtTime(0, time + FRAME_DURATION);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.start(time);
+        osc.stop(time + FRAME_DURATION);
+        currentOscillators.push(osc);
+    });
 
     currentOscillators = currentOscillators.filter(osc => osc.context.currentTime < time + FRAME_DURATION + 1);
 }
