@@ -326,11 +326,31 @@ window.addEventListener('DOMContentLoaded', () => {
 }
 
         function getTitle(id) {
-            if (nicknames[id]) return nicknames[id];
-            let name = config.defaultName + ": " + id;
-            if (name.length > 100) name = name.substring(0, 100) + "...";
-            return name;
+    if (!id) return config.defaultName + ": Unknown";
+    
+    // Ensure nicknames object exists
+    if (typeof nicknames === 'undefined' || !nicknames) {
+        let name = config.defaultName + ": " + id;
+        return name.length > 100 ? name.substring(0, 100) + "..." : name;
+    }
+
+    // 1. Direct match (if the full ID is the key in nicknames)
+    if (nicknames[id]) {
+        return nicknames[id];
+    }
+
+    // 2. Reverse check: see if any nickname key's sanitized version matches this ID
+    for (const [key, title] of Object.entries(nicknames)) {
+        if (sanitizeId(key) === id) {
+            return title;
         }
+    }
+
+    // 3. Fallback to default name formatting
+    let name = config.defaultName + ": " + id;
+    if (name.length > 100) name = name.substring(0, 100) + "...";
+    return name;
+}
 
         function formatTime(seconds) {
             const m = Math.floor(seconds / 60);
