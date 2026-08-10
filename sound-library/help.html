@@ -140,4 +140,50 @@
             <tr>
                 <td><strong>Indices 1 – 10</strong></td>
                 <td><code>1 2 3 4 5 6 7 8 9 a</code></td>
-                <td>
+                <td>262 Hz – 823 Hz</td>
+                <td>Middle register (~C4 to ~G5)</td>
+            </tr>
+            <tr>
+                <td><strong>Indices 11 – 30</strong></td>
+                <td><code>b through u</code></td>
+                <td>885 Hz – 2068 Hz</td>
+                <td>Upper register (~A5 to ~C7)</td>
+            </tr>
+            <tr>
+                <td><strong>Indices 31 – 50</strong></td>
+                <td><code>v through K</code></td>
+                <td>2130 Hz – 3313 Hz</td>
+                <td>High register (~C#7 to ~G8)</td>
+            </tr>
+            <tr>
+                <td><strong>Indices 51 – 61</strong></td>
+                <td><code>L through Z</code></td>
+                <td>3375 Hz – 4000 Hz</td>
+                <td>Ultra-high register (~G#8 and up)</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>3. Application Features</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Feature</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Nicknamed Sounds</strong></td>
+                <td>Curated audio sequences mapped to human-readable titles in <code>nicknames.json</code>. Automatically compiled into a dedicated, scrollable playlist tab.</td>
+            </tr>
+            <tr>
+                <td><strong>Client-Side WAV Export</strong></td>
+                <td>Uses an <code>OfflineAudioContext</code> to render the sequence directly in the browser and package it into an uncompressed <code>.wav</code> file. Applies exact sustain logic so continuous notes are generated perfectly.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>
