@@ -203,6 +203,7 @@ const FRAME_DURATION = 0.1; // 0.1 seconds per character
         let visualizerCanvas, visualizerCtx;
         let animationFrameReq;
         let seekTime = 0; 
+        let playbackStartTime = 0;
 
         // --- INDEXED DB ---
         let db;
@@ -245,47 +246,36 @@ window.addEventListener('DOMContentLoaded', () => {
         // --- AUDIO MATH & DECODING ---
         // --- AUDIO MATH & DECODING (UPDATED FOR 84 SLOTS & SEARCH FIX) ---
 function sanitizeId(input) {
-    if (!input) return '0'.repeat(84);
+    if (!input) return '0'.repeat(61);
     
-    // Check if it's already a valid raw ID string (multiple of 84, no colons/pipes)
-    if (!input.includes('|') && !input.includes(':') && input.length > 0 && input.length % 84 === 0) {
+    // Check if it's already a valid raw ID string
+    if (!input.includes('|') && !input.includes(':') && input.length > 0 && input.length % 61 === 0) {
         let isValidRaw = [...input].every(c => VOL_CHARS.includes(c));
         if (isValidRaw) return input;
     }
 
-    if (input.includes('|') || input.includes(':')) {
-        const parts = input.split('|');
-        let finalId = "";
-        parts.forEach(part => {
-            let frameArr = new Array(84).fill('0');
-            let regex = /([1-9a-zA-Z~!@#$%^&*()_\-=\+,\.<>\/?])(?:[:](.))?/g;
-            let match;
-            while ((match = regex.exec(part)) !== null) {
-                let pitchChar = match[1];
-                let volChar = match[2] || '?'; // Default to '?' (Max Volume)
-                
-                let pitchIndex = PITCH_CHARS.indexOf(pitchChar);
-                if (pitchIndex !== -1 && VOL_CHARS.includes(volChar)) {
-                    frameArr[pitchIndex] = volChar;
-                }
-            }
-            finalId += frameArr.join('');
-        });
-        return finalId || '0'.repeat(84);
-    } else {
-        // General text search query (e.g. "one", "three", "3"): maps search characters across the 84 slots
-        let frameArr = new Array(84).fill('0');
-        for (let i = 0; i < Math.min(input.length, 84); i++) {
-            let char = input[i];
-            let vIdx = VOL_CHARS.indexOf(char);
-            if (vIdx !== -1) {
-                frameArr[i] = char;
-            } else {
-                frameArr[i] = '?';
+    const parts = input.split('|');
+    let finalId = "";
+    
+    parts.forEach(part => {
+        let frameArr = new Array(61).fill('0');
+        // Regex strictly captures known Pitch Characters and an optional volume
+        let regex = /([1-9a-zA-Z])(?:[:](.))?/g;
+        let match;
+        while ((match = regex.exec(part)) !== null) {
+            let pitchChar = match[1];
+            let volChar = match[2] || '?'; // Default to max volume
+            
+            let pitchIndex = PITCH_CHARS.indexOf(pitchChar);
+            if (pitchIndex !== -1 && VOL_CHARS.includes(volChar)) {
+                frameArr[pitchIndex] = volChar;
             }
         }
-        return frameArr.join('');
-    }
+        finalId += frameArr.join('');
+    });
+
+    if (!finalId) finalId = '0'.repeat(61);
+    return finalId;
 }
 
 function generateRandomId(targetFrames = null) {
@@ -365,10 +355,11 @@ function mutateId(id) {
 }
 
         function formatTime(seconds) {
-            const m = Math.floor(seconds / 60);
-            const s = Math.floor(seconds % 60).toString().padStart(2, '0');
-            return `${m}:${s}`;
-        }
+    if (isNaN(seconds) || seconds < 0) seconds = 0;
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+}
         async function loadNicknames() {
     try {
         // 1. Wait for the fetch request to complete
@@ -580,25 +571,16 @@ function switchPlaylistTab(tab) {
             userData.playlists.forEach((p, idx) => container.appendChild(createPlaylistCard(p, idx)));
         }
     } else {
-        // --- 1. ALWAYS ADD NICKNAMED SOUNDS FIRST ---
-        // Grab all IDs that currently have a nickname
         const nickKeys = (typeof nicknames !== 'undefined' && nicknames) ? Object.keys(nicknames) : [];
-        
-        const nicknamedPlaylist = { 
-            name: "Nicknamed Sounds", 
-            items: nickKeys // Includes ALL of them
-        };
-        // Append it as the very first card
+        const nicknamedPlaylist = { name: "Nicknamed Sounds", items: nickKeys };
         container.appendChild(createPlaylistCard(nicknamedPlaylist, -1));
 
-
-        // --- 2. GENERATE RANDOM PLAYLISTS AFTER ---
-        // Generate 8 random groups with prefixes between 1 and 5 characters
         for (let g = 0; g < 8; g++) {
             let prefixLen = Math.floor(Math.random() * 5) + 1;
             let prefix = "";
             for (let c = 0; c < prefixLen; c++) {
-                prefix += BASE62[Math.floor(Math.random() * 62)];
+                // FIXED: Use PITCH_CHARS instead of the deleted BASE62 variable
+                prefix += PITCH_CHARS[Math.floor(Math.random() * PITCH_CHARS.length)];
             }
             
             const pl = { name: `Some ${prefix} Signals`, items: [] };
@@ -620,19 +602,11 @@ function switchPlaylistTab(tab) {
     clearNav();
     setURL(`?search=${encodeURIComponent(query)}`);
     
-    // Split the query by '|' to allow multi-frame definitions (e.g., "frame1|frame2")
     const parts = query.split('|');
     let clean = "";
     
-    parts.forEach(part => {
-        // Run each part through sanitizeId so it builds a proper 62-character frame block
-        clean += sanitizeId(part);
-    });
-    
-    // Fallback safety check if clean is empty
-    if (!clean) {
-        clean = sanitizeId("0");
-    }
+    parts.forEach(part => { clean += sanitizeId(part); });
+    if (!clean) clean = sanitizeId("0");
     
     let html = `<h2 class="section-title">Search Results</h2><div class="list-view">`;
     document.getElementById('mainContent').innerHTML = html + `</div>`;
@@ -671,7 +645,7 @@ function switchPlaylistTab(tab) {
                     <canvas id="visualizer"></canvas>
                     <div class="controls">
                         <div class="play-btn" id="playBtn" onclick="togglePlay()"></div>
-<div class="time-display" id="timeDisplay">0:00 / ${formatTime((id.length * FRAME_DURATION) / 62)}</div>
+                        <div class="time-display" id="timeDisplay">0:00 / ${formatTime((id.length * FRAME_DURATION) / 61)}</div>
                         <div class="progress-bar" id="progressBar" onclick="seekAudio(event)">
                             <div class="progress-fill" id="progressFill"></div>
                         </div>
@@ -709,8 +683,30 @@ function switchPlaylistTab(tab) {
     visualizerCtx = visualizerCanvas.getContext('2d');
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
-    
     drawOscilloscope(0);
+}
+
+function createCard(id, isList = false, badge = "") {
+    const wrapper = document.createElement('div');
+    wrapper.className = isList ? 'list-card' : 'video-card';
+    wrapper.onclick = () => goWatch(id);
+    
+    const bHtml = badge ? `<div class="badge">${badge}</div>` : '';
+    const canvasId = 'thumb_' + Math.random().toString(36).substr(2, 9);
+
+    wrapper.innerHTML = `
+        <div class="thumbnail-wrapper">
+            <canvas class="thumbnail-canvas" id="${canvasId}"></canvas>
+        </div>
+        <div style="flex:1; min-width:0;">
+            ${bHtml}
+            <h4 class="card-title">${getTitle(id)}</h4>
+            <div style="font-size:14px; color:var(--text-secondary); margin-top:4px;">${formatTime((id.length * FRAME_DURATION)/61)}</div>
+        </div>
+    `;
+    
+    setTimeout(() => drawWaveformThumbnail(document.getElementById(canvasId), id), 0);
+    return wrapper;
 }
         
 
@@ -966,38 +962,37 @@ function audioBufferToWav(buffer) {
     }
     ctx.stroke();
 }
-        // --- AUDIO ENGINE ---
         function togglePlay() {
-            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const btn = document.getElementById('playBtn');
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const btn = document.getElementById('playBtn');
 
-            if (isPlaying) {
-                isPlaying = false;
-                btn.classList.remove('playing');
-                clearInterval(scheduleTimer);
-                cancelAnimationFrame(animationFrameReq);
-                currentOscillators.forEach(osc => { try{osc.stop()}catch(e){} });
-                currentOscillators = [];
-            } else {
-                isPlaying = true;
-                btn.classList.add('playing');
-                if(audioCtx.state === 'suspended') audioCtx.resume();
-                
-                currentFrame = Math.floor(seekTime / FRAME_DURATION);
-                nextNoteTime = audioCtx.currentTime;
-                scheduler(); 
-                scheduleTimer = setInterval(scheduler, 25);
-                animateVisualizer();
-            }
-        }
-
+    if (isPlaying) {
+        isPlaying = false;
+        btn.classList.remove('playing');
+        clearInterval(scheduleTimer);
+        cancelAnimationFrame(animationFrameReq);
+        currentOscillators.forEach(osc => { try{osc.stop()}catch(e){} });
+        currentOscillators = [];
+    } else {
+        isPlaying = true;
+        btn.classList.add('playing');
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        
+        playbackStartTime = audioCtx.currentTime; // Sync visualizer perfectly
+        currentFrame = Math.floor(seekTime / FRAME_DURATION);
+        nextNoteTime = audioCtx.currentTime;
+        scheduler(); 
+        scheduleTimer = setInterval(scheduler, 25);
+        animateVisualizer();
+    }
+}
         function stopAudio() {
             if (isPlaying) togglePlay();
             seekTime = 0;
         }
 
-        function scheduler() {
-    const totalFrames = Math.floor(currentSequence.length / 84);
+       function scheduler() {
+    const totalFrames = Math.floor(currentSequence.length / 61);
     while (nextNoteTime < audioCtx.currentTime + 0.1 && currentFrame < totalFrames) {
         scheduleFrame(currentFrame, nextNoteTime);
         nextNoteTime += FRAME_DURATION;
@@ -1080,68 +1075,39 @@ function scheduleFrame(frameIdx, time) {
     currentOscillators = currentOscillators.filter(osc => osc.context.currentTime < time + 5);
 }
 // Replace drawOscilloscope
-function drawOscilloscope(timeOffset) {
-    if(!visualizerCanvas || !visualizerCtx) return;
-    const ctx = visualizerCtx;
-    const width = visualizerCanvas.width;
-    const height = visualizerCanvas.height;
 
-    if (width === 0 || height === 0) resizeCanvas();
-
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(0, 0, width, height);
-
-    const frameIdx = Math.floor(timeOffset / FRAME_DURATION);
-    const char = currentSequence.charAt(frameIdx) || '0';
-    const val = charToBinary(char);
-
-    ctx.strokeStyle = 'var(--accent)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-
-    if (val === 0) {
-        ctx.moveTo(0, height/2);
-        ctx.lineTo(width, height/2);
-    } else {
-        const freq = 200 + ((val / 61) * 3800);
-        for(let x=0; x<width; x++) {
-            const scrollX = x + (timeOffset * 300); 
-            const yOffset = Math.sin(scrollX * 0.01 * (freq / 500)) * (height / 3);
-            if(x===0) ctx.moveTo(x, height/2 + yOffset);
-            else ctx.lineTo(x, height/2 + yOffset);
-        }
-    }
-    ctx.stroke();
-}
         function animateVisualizer() {
-            if(!isPlaying) return;
-            const elapsedTime = seekTime + (audioCtx.currentTime - (nextNoteTime - (currentFrame * FRAME_DURATION) + seekTime)); 
-            const actualTime = Math.max(0, elapsedTime);
-            
-            drawOscilloscope(actualTime);
-            updateProgressUI(actualTime);
-            
-            animationFrameReq = requestAnimationFrame(animateVisualizer);
-        }
+    if(!isPlaying) return;
+    const actualTime = seekTime + (audioCtx.currentTime - playbackStartTime); 
+    
+    drawOscilloscope(actualTime);
+    updateProgressUI(actualTime);
+    
+    animationFrameReq = requestAnimationFrame(animateVisualizer);
+}
 
-        function updateProgressUI(time) {
+function updateProgressUI(time) {
     const tDisp = document.getElementById('timeDisplay');
     const pFill = document.getElementById('progressFill');
     if(!tDisp || !pFill) return;
     
-    const total = (currentSequence.length / 84) * FRAME_DURATION;
+    const total = (currentSequence.length / 61) * FRAME_DURATION;
     const safeTime = Math.min(time, total);
     tDisp.innerText = `${formatTime(safeTime)} / ${formatTime(total)}`;
-    pFill.style.width = `${(safeTime / total) * 100}%`;
+    if (total > 0) {
+        pFill.style.width = `${(safeTime / total) * 100}%`;
+    } else {
+        pFill.style.width = `0%`;
+    }
 }
-
 function seekAudio(e) {
     if(!currentSequence) return;
     const bar = document.getElementById('progressBar');
     const rect = bar.getBoundingClientRect();
-    const percent = (e.clientX - rect.left) / rect.width;
+    let percent = (e.clientX - rect.left) / rect.width;
+    percent = Math.max(0, Math.min(1, percent)); // Ensure valid range
     
-    const total = (currentSequence.length / 84) * FRAME_DURATION;
+    const total = (currentSequence.length / 61) * FRAME_DURATION;
     seekTime = percent * total;
     
     if(isPlaying) {
@@ -1152,25 +1118,6 @@ function seekAudio(e) {
         drawOscilloscope(seekTime);
     }
 }
-
-        function seekAudio(e) {
-            if(!currentSequence) return;
-            const bar = document.getElementById('progressBar');
-            const rect = bar.getBoundingClientRect();
-            const percent = (e.clientX - rect.left) / rect.width;
-            
-            const total = (currentSequence.length / 62) * FRAME_DURATION;
-            seekTime = percent * total;
-            
-            if(isPlaying) {
-                togglePlay(); 
-                togglePlay();
-            } else {
-                updateProgressUI(seekTime);
-                drawOscilloscope(seekTime);
-            }
-        }
-
         // --- DATA ACTIONS ---
         async function toggleFavorite(id) {
             const idx = userData.favorites.indexOf(id);
