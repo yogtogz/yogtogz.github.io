@@ -80,7 +80,6 @@
 <body>
 
 <div class="container">
-    <p>(Definetly) not AI generated and I'm (Definitely) not too lazy to write this</p><br>
     <h1>Sound Library of Babel</h1>
     <p>Complete documentation explaining the 62-character block architecture, query syntax rules, audio frequency mapping, and character-to-note equivalents.</p>
 
@@ -95,11 +94,11 @@
         <tbody>
             <tr>
                 <td><strong>62-Character Block</strong></td>
-                <td>The base unit of playback. Each block represents exactly **0.1 seconds** of continuous sound.</td>
+                <td>The base unit of playback. Each block represents exactly <strong>0.1 seconds</strong> of continuous sound. If consecutive blocks contain the same character at the same index, the note will sustain seamlessly across frames without dropping in volume.</td>
             </tr>
             <tr>
                 <td><strong>`|` (Pipe Separator)</strong></td>
-                <td>Used in search and custom inputs to chain frames together sequentially (e.g., entering <code>hello|world</code> creates a multi-frame sequence where each block plays consecutively for 0.1s).</td>
+                <td>Used exclusively in the <strong>Search bar</strong> to chain custom frames together sequentially (e.g., entering <code>hello|world</code> creates a multi-frame sequence where each block plays consecutively for 0.1s).</td>
             </tr>
             <tr>
                 <td><strong>`0` (Zero)</strong></td>
@@ -112,8 +111,6 @@
     <p>The library uses the standard Base62 character set: <br>
     <code>0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ</code></p>
     
-    
-
     <div class="highlight-box">
         <strong>The Mathematical Formula:</strong> 
         Except for index <code>0</code> (which is always silence), every position <code>i</code> from <code>1</code> to <code>61</code> maps to a unique sine wave frequency using the linear progression formula:
@@ -131,7 +128,6 @@
                 <th>Example Character Range</th>
                 <th>Frequency Range</th>
                 <th>Approximate Musical Scale / Notes</th>
-                <th>Behavior</th>
             </tr>
         </thead>
         <tbody>
@@ -140,59 +136,8 @@
                 <td><code>0</code></td>
                 <td>—</td>
                 <td>Silence</td>
-                <td>Reserved slot; produces no sound.</td>
             </tr>
             <tr>
                 <td><strong>Indices 1 – 10</strong></td>
                 <td><code>1 2 3 4 5 6 7 8 9 a</code></td>
-                <td>262 Hz – 823 Hz</td>
-                <td>Middle register (~C4 to ~G5)</td>
-                <td>Warm lower-mid melodic tones.</td>
-            </tr>
-            <tr>
-                <td><strong>Indices 11 – 30</strong></td>
-                <td><code>b through u</code></td>
-                <td>885 Hz – 2068 Hz</td>
-                <td>Upper register (~A5 to ~C7)</td>
-                <td>Bright primary melody and chime frequencies.</td>
-            </tr>
-            <tr>
-                <td><strong>Indices 31 – 50</strong></td>
-                <td><code>v through K</code></td>
-                <td>2130 Hz – 3313 Hz</td>
-                <td>High register (~C#7 to ~G8)</td>
-                <td>Crisp harmonic overtone channels.</td>
-            </tr>
-            <tr>
-                <td><strong>Indices 51 – 61</strong></td>
-                <td><code>L through Z</code></td>
-                <td>3375 Hz – 4000 Hz</td>
-                <td>Ultra-high register (~G#8 and up)</td>
-                <td>Piercing upper chime tones and sparkles.</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <h2>3. Application Features</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Feature</th>
-                <th>Description</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><strong>Nicknamed Sounds</strong></td>
-                <td>Curated audio sequences mapped to human-readable titles in <code>nicknames.json</code>. Automatically compiled into a dedicated, scrollable playlist tab.</td>
-            </tr>
-            <tr>
-                <td><strong>Client-Side WAV Export</strong></td>
-                <td>Uses an <code>OfflineAudioContext</code> to render the sequence directly in the browser and package it into an uncompressed <code>.wav</code> file.</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
-</body>
-</html>
+                <td>
