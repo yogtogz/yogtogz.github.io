@@ -738,46 +738,53 @@ async function downloadAudio() {
         const duration = totalFrames * FRAME_DURATION;
         const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100 * duration, 44100);
 
-        for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
-            const blockStart = frameIdx * 62;
-            const blockEnd = blockStart + 62;
-            const block = currentSequence.substring(blockStart, blockEnd);
+        // Process vertically (per pitch track) instead of frame-by-frame
+        for (let i = 1; i < 62; i++) {
+            let startFrame = -1;
             
-            if (!block || block.length < 62) continue;
+            for (let frameIdx = 0; frameIdx <= totalFrames; frameIdx++) {
+                // If we reach the end, force a '0' to stop any active notes
+                const charAt = frameIdx < totalFrames ? currentSequence[frameIdx * 62 + i] : '0';
+                const isActive = (charAt !== '0' && charAt === BASE62[i]);
 
-            const time = frameIdx * FRAME_DURATION;
-            let activePitches = 0;
-            const pitches = [];
+                if (isActive && startFrame === -1) {
+                    // Note begins
+                    startFrame = frameIdx;
+                } else if (!isActive && startFrame !== -1) {
+                    // Note ends, calculate length and schedule it
+                    const durationFrames = frameIdx - startFrame;
+                    const startTime = startFrame * FRAME_DURATION;
+                    const durationInSecs = durationFrames * FRAME_DURATION;
+                    
+                    // Balance volume based on how many notes play at its start frame
+                    let activeAtStart = 0;
+                    for(let j = 1; j < 62; j++) {
+                        if(currentSequence[startFrame * 62 + j] === BASE62[j]) activeAtStart++;
+                    }
+                    const volumePerPitch = 0.5 / Math.max(1, activeAtStart);
+                    const freq = 200 + ((i / 61) * 3800);
 
-            for (let i = 1; i < 62; i++) {
-                if (block[i] !== '0' && block[i] === BASE62[i]) {
-                    pitches.push(i);
-                    activePitches++;
+                    const osc = offlineCtx.createOscillator();
+                    const gain = offlineCtx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+
+                    gain.gain.setValueAtTime(0, startTime);
+                    gain.gain.linearRampToValueAtTime(volumePerPitch, startTime + 0.005);
+                    gain.gain.setValueAtTime(volumePerPitch, startTime + durationInSecs - 0.005);
+                    gain.gain.linearRampToValueAtTime(0, startTime + durationInSecs);
+
+                    osc.connect(gain);
+                    gain.connect(offlineCtx.destination);
+                    
+                    osc.start(startTime);
+                    osc.stop(startTime + durationInSecs);
+
+                    // Reset to look for the next time this pitch occurs
+                    startFrame = -1; 
                 }
             }
-
-            if (activePitches === 0) continue;
-            const volumePerPitch = 0.5 / Math.max(1, activePitches);
-
-            pitches.forEach(pitchIndex => {
-                const freq = 200 + ((pitchIndex / 61) * 3800);
-                const osc = offlineCtx.createOscillator();
-                const gain = offlineCtx.createGain();
-                
-                osc.type = 'sine';
-                osc.frequency.value = freq;
-
-                gain.gain.setValueAtTime(0, time);
-                gain.gain.linearRampToValueAtTime(volumePerPitch, time + 0.005);
-                gain.gain.setValueAtTime(volumePerPitch, time + FRAME_DURATION - 0.005);
-                gain.gain.linearRampToValueAtTime(0, time + FRAME_DURATION);
-
-                osc.connect(gain);
-                gain.connect(offlineCtx.destination);
-                
-                osc.start(time);
-                osc.stop(time + FRAME_DURATION);
-            });
         }
 
         const renderedBuffer = await offlineCtx.startRendering();
@@ -1018,50 +1025,70 @@ function mulberry32(a) {
 
 function scheduleFrame(frameIdx, time) {
     const blockStart = frameIdx * 62;
-    const blockEnd = blockStart + 62;
-    const block = currentSequence.substring(blockStart, blockEnd);
+    const block = currentSequence.substring(blockStart, blockStart + 62);
 
-    // Stop if we reach the end of the sequence
     if (!block || block.length < 62) return; 
 
-    let activePitches = 0;
-    const pitches = [];
+    // Determine if we just skipped/seeked to this frame, or if it's playing continuously
+    const isFirstFrameAfterSeek = (frameIdx === Math.floor(seekTime / FRAME_DURATION));
+    const prevBlock = (frameIdx > 0 && !isFirstFrameAfterSeek) 
+        ? currentSequence.substring((frameIdx - 1) * 62, frameIdx * 62) 
+        : null;
 
-    // Loop through indexes 1 to 61 of this specific frame's block
+    const totalFrames = Math.floor(currentSequence.length / 62);
+
+    // Count active pitches in THIS frame to balance volume
+    let activePitches = 0;
     for (let i = 1; i < 62; i++) {
-        if (block[i] !== '0' && block[i] === BASE62[i]) {
-            pitches.push(i);
-            activePitches++;
+        if (block[i] !== '0' && block[i] === BASE62[i]) activePitches++;
+    }
+    if (activePitches === 0) return;
+
+    const volumePerPitch = 0.5 / Math.max(1, activePitches);
+
+    for (let i = 1; i < 62; i++) {
+        const isActive = (block[i] !== '0' && block[i] === BASE62[i]);
+        const wasActive = prevBlock ? (prevBlock[i] !== '0' && prevBlock[i] === BASE62[i]) : false;
+
+        // ONLY trigger the oscillator if the note just started
+        if (isActive && !wasActive) {
+            let durationFrames = 1;
+            
+            // Look ahead to see exactly how many frames this pitch stays on
+            for (let f = frameIdx + 1; f < totalFrames; f++) {
+                const nextChar = currentSequence[f * 62 + i];
+                if (nextChar !== '0' && nextChar === BASE62[i]) {
+                    durationFrames++;
+                } else {
+                    break;
+                }
+            }
+
+            const durationInSecs = durationFrames * FRAME_DURATION;
+            const freq = 200 + ((i / 61) * 3800);
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine'; 
+            osc.frequency.value = freq;
+            
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(volumePerPitch, time + 0.005);
+            gain.gain.setValueAtTime(volumePerPitch, time + durationInSecs - 0.005);
+            gain.gain.linearRampToValueAtTime(0, time + durationInSecs);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(time);
+            osc.stop(time + durationInSecs);
+            currentOscillators.push(osc);
         }
     }
 
-    if (activePitches === 0) return;
-
-    // Dynamically lower the volume based on how many pitches play so speakers don't explode
-    const volumePerPitch = 0.5 / Math.max(1, activePitches);
-
-    pitches.forEach(pitchIndex => {
-        const freq = 200 + ((pitchIndex / 61) * 3800);
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        
-        osc.type = 'sine'; 
-        osc.frequency.value = freq;
-        
-        gain.gain.setValueAtTime(0, time);
-        gain.gain.linearRampToValueAtTime(volumePerPitch, time + 0.005);
-        gain.gain.setValueAtTime(volumePerPitch, time + FRAME_DURATION - 0.005);
-        gain.gain.linearRampToValueAtTime(0, time + FRAME_DURATION);
-
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        
-        osc.start(time);
-        osc.stop(time + FRAME_DURATION);
-        currentOscillators.push(osc);
-    });
-
-    currentOscillators = currentOscillators.filter(osc => osc.context.currentTime < time + FRAME_DURATION + 1);
+    // Cleanup stale oscillators from memory
+    currentOscillators = currentOscillators.filter(osc => osc.context.currentTime < time + 5);
 }
 // Replace drawOscilloscope
 function drawOscilloscope(timeOffset) {
