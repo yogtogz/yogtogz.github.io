@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Library of Babel - Help & Reference Guide</title>
+    <style>
+        :root {
+            --bg-color: #0f1115;
+            --card-bg: #1a1d24;
+            --text-main: #f0f2f5;
+            --text-secondary: #9aa0a6;
+            --accent: #4f46e5;
+            --border: #2d323b;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2.5rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+        h1, h2 {
+            color: var(--text-main);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+        h1 { margin-top: 0; font-size: 2rem; color: #818cf8; }
+        h2 { font-size: 1.4rem; margin-top: 2rem; }
+        p { color: var(--text-secondary); }
+        code {
+            background: #111318;
+            color: #38bdf8;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: #15181e;
+            color: var(--text-main);
+        }
+        td {
+            color: var(--text-secondary);
+        }
+        td strong {
+            color: var(--text-main);
+        }
+        .highlight-box {
+            background: #15181e;
+            border-left: 4px solid var(--accent);
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Sound Library of Babel</h1>
+    <p>Welcome to the official documentation and reference guide. This document details how audio signals, frames, character indexes, and note frequencies are calculated and parsed.</p>
+
+    <h2>1. Core Architecture & Frame Blocks</h2>
+    <p>The library operates on a strict <strong>62-character block architecture</strong>. Every individual frame of audio represents exactly <strong>0.1 seconds</strong> of playback time.</p>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Concept</th>
+                <th>Syntax / Symbol</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Frame Duration</strong></td>
+                <td>0.1s per block</td>
+                <td>Each 62-character string segment translates to a single 0.1-second audio frame slice.</td>
+            </tr>
+            <tr>
+                <td><strong>Silence Selector</strong></td>
+                <td><code>0</code> (at any index)</td>
+                <td>Represents silence or an inactive audio channel. A block of pure zeros produces no sound.</td>
+            </tr>
+            <tr>
+                <td><strong>Frame Separator</strong></td>
+                <td><code>|</code> (Pipe)</td>
+                <td>Used in search and input fields to chain sequential frames together (e.g., writing <code>hello|world</code> creates a multi-frame custom sequence).</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>2. Character Index & Frequency Mapping</h2>
+    <p>The base alphabet consists of 62 characters (Base62): <br>
+    <code>0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ</code></p>
+    
+    <div class="highlight-box">
+        <strong>How frequencies are determined:</strong> 
+        Index <code>0</code> is reserved for silence/padding (`0`). Indices <code>1</code> through <code>61</code> map linearly across a continuous frequency range from <strong>200 Hz up to 4000 Hz</strong> using the formula:
+        <br><br>
+        <code>Frequency = 200 + ((Index / 61) * 3800)</code>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Character Position (Index)</th>
+                <th>Approximate Frequency</th>
+                <th>Behavior when active</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Index 0</strong></td>
+                <td>—</td>
+                <td>Reserved for <code>0</code> (Silence / Inactive channel).</td>
+            </tr>
+            <tr>
+                <td><strong>Indices 1 – 15</strong></td>
+                <td>200 Hz – 1131 Hz</td>
+                <td>Low-to-mid range tone channels. Triggered when valid alphanumeric characters occupy these exact slots.</td>
+            </tr>
+            <tr>
+                <td><strong>Indices 16 – 45</strong></td>
+                <td>1193 Hz – 3000 Hz</td>
+                <td>Mid-to-high range melody channels. Polyphonic blending handles overlapping active slots smoothly.</td>
+            </tr>
+            <tr>
+                <td><strong>Indices 46 – 61</strong></td>
+                <td>3062 Hz – 4000 Hz</td>
+                <td>High frequency chime and upper register channels.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>3. Features & Data Management</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Feature</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Nicknamed Sounds</strong></td>
+                <td>Curated audio sequences mapped to human-readable names via <code>nicknames.json</code>. Displayed randomly on the home screen and compiled into a primary scrollable playlist.</td>
+            </tr>
+            <tr>
+                <td><strong>Client-Side WAV Export</strong></td>
+                <td>Converts the active ID sequence into an uncompressed <code>.wav</code> file instantly in your browser using an <code>OfflineAudioContext</code>.</td>
+            </tr>
+            <tr>
+                <td><strong>Local Storage & Sync</strong></td>
+                <td>User authentication, account themes, playlists, and settings are securely managed locally via IndexedDB.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>
