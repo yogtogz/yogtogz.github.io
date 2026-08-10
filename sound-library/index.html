@@ -243,37 +243,75 @@ window.addEventListener('DOMContentLoaded', () => {
     afterInitDB();
 });
         // --- AUDIO MATH & DECODING ---
-        function sanitizeId(input) {
-    if (!input) return '0'.repeat(61);
+        // --- AUDIO MATH & DECODING (UPDATED FOR 84 SLOTS & SEARCH FIX) ---
+function sanitizeId(input) {
+    if (!input) return '0'.repeat(84);
     
-    // Check if it's already a valid raw ID string (multiple of 61, no colons/pipes)
-    if (!input.includes('|') && !input.includes(':') && input.length > 0 && input.length % 61 === 0) {
+    // Check if it's already a valid raw ID string (multiple of 84, no colons/pipes)
+    if (!input.includes('|') && !input.includes(':') && input.length > 0 && input.length % 84 === 0) {
         let isValidRaw = [...input].every(c => VOL_CHARS.includes(c));
         if (isValidRaw) return input;
     }
 
-    const parts = input.split('|');
-    let finalId = "";
-    
-    parts.forEach(part => {
-        let frameArr = new Array(61).fill('0');
-        // Match Pitch optionally followed by :Volume (e.g. h:? or just h)
-        let regex = /([1-9a-zA-Z])(?:[:](.))?/g;
-        let match;
-        while ((match = regex.exec(part)) !== null) {
-            let pitchChar = match[1];
-            let volChar = match[2] || '?'; // Default to '?' (Max Volume)
-            
-            let pitchIndex = PITCH_CHARS.indexOf(pitchChar);
-            if (pitchIndex !== -1 && VOL_CHARS.includes(volChar)) {
-                frameArr[pitchIndex] = volChar;
+    if (input.includes('|') || input.includes(':')) {
+        const parts = input.split('|');
+        let finalId = "";
+        parts.forEach(part => {
+            let frameArr = new Array(84).fill('0');
+            let regex = /([1-9a-zA-Z~!@#$%^&*()_\-=\+,\.<>\/?])(?:[:](.))?/g;
+            let match;
+            while ((match = regex.exec(part)) !== null) {
+                let pitchChar = match[1];
+                let volChar = match[2] || '?'; // Default to '?' (Max Volume)
+                
+                let pitchIndex = PITCH_CHARS.indexOf(pitchChar);
+                if (pitchIndex !== -1 && VOL_CHARS.includes(volChar)) {
+                    frameArr[pitchIndex] = volChar;
+                }
+            }
+            finalId += frameArr.join('');
+        });
+        return finalId || '0'.repeat(84);
+    } else {
+        // General text search query (e.g. "one", "three", "3"): maps search characters across the 84 slots
+        let frameArr = new Array(84).fill('0');
+        for (let i = 0; i < Math.min(input.length, 84); i++) {
+            let char = input[i];
+            let vIdx = VOL_CHARS.indexOf(char);
+            if (vIdx !== -1) {
+                frameArr[i] = char;
+            } else {
+                frameArr[i] = '?';
             }
         }
-        finalId += frameArr.join('');
-    });
+        return frameArr.join('');
+    }
+}
 
-    if (!finalId) finalId = '0'.repeat(61);
-    return finalId;
+function generateRandomId(targetFrames = null) {
+    let frames = targetFrames;
+    if (!frames) frames = Math.floor(Math.random() * 3000) + 1;
+    
+    let id = "";
+    for (let i = 0; i < frames; i++) {
+        for (let j = 0; j < 84; j++) {
+            if (Math.random() > 0.15) {
+                id += "0"; // Silence
+            } else {
+                let volIdx = Math.floor(Math.random() * 83) + 1;
+                id += VOL_CHARS[volIdx];
+            }
+        }
+    }
+    return id;
+}
+
+function mutateId(id) {
+    let arr = id.split('');
+    let idx = Math.floor(Math.random() * arr.length);
+    let volIdx = Math.floor(Math.random() * VOL_CHARS.length);
+    arr[idx] = VOL_CHARS[volIdx];
+    return arr.join('');
 }
         function charToBinary(char) {
             let idx = BASE62.indexOf(char);
@@ -298,14 +336,6 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
     return id; // Already clean
-}
-
-function mutateId(id) {
-    let arr = id.split('');
-    let idx = Math.floor(Math.random() * arr.length);
-    let volIdx = Math.floor(Math.random() * VOL_CHARS.length);
-    arr[idx] = VOL_CHARS[volIdx]; // Randomize its volume
-    return arr.join('');
 }
         function getTitle(id) {
     if (!id) return config.defaultName + ": Unknown";
@@ -715,16 +745,16 @@ async function downloadAudio() {
     btn.disabled = true;
 
     try {
-        const totalFrames = Math.floor(currentSequence.length / 61);
+        const totalFrames = Math.floor(currentSequence.length / 84);
         const duration = totalFrames * FRAME_DURATION;
         const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100 * duration, 44100);
 
-        for (let i = 0; i < 61; i++) {
+        for (let i = 0; i < 84; i++) {
             let startFrame = -1;
             let currentVolChar = '0';
             
             for (let frameIdx = 0; frameIdx <= totalFrames; frameIdx++) {
-                const charAt = frameIdx < totalFrames ? currentSequence[frameIdx * 61 + i] : '0';
+                const charAt = frameIdx < totalFrames ? currentSequence[frameIdx * 84 + i] : '0';
                 const isActive = (charAt !== '0');
 
                 if (isActive && startFrame === -1) {
@@ -736,8 +766,8 @@ async function downloadAudio() {
                     const durationInSecs = durationFrames * FRAME_DURATION;
                     
                     let totalVolumeReq = 0;
-                    for(let j = 0; j < 61; j++) {
-                        let vIdx = VOL_CHARS.indexOf(currentSequence[startFrame * 61 + j]);
+                    for(let j = 0; j < 84; j++) {
+                        let vIdx = VOL_CHARS.indexOf(currentSequence[startFrame * 84 + j]);
                         if (vIdx > 0) totalVolumeReq += (vIdx / 83);
                     }
                     let volumeScale = 1.0;
@@ -745,7 +775,7 @@ async function downloadAudio() {
                     
                     const volIdx = VOL_CHARS.indexOf(currentVolChar);
                     const pitchVolume = (volIdx / 83) * volumeScale * 0.5;
-                    const freq = 200 + ((i / 60) * 3800);
+                    const freq = 200 + ((i / 83) * 3800);
 
                     const osc = offlineCtx.createOscillator();
                     const gain = offlineCtx.createGain();
@@ -866,7 +896,7 @@ function audioBufferToWav(buffer) {
             visualizerCanvas.height = visualizerCanvas.parentElement.clientHeight - 48;
         }
 
-       function drawWaveformThumbnail(canvas, id, isPlaylist = false) {
+      function drawWaveformThumbnail(canvas, id, isPlaylist = false) {
     if(!canvas) return;
     const ctx = canvas.getContext('2d');
     const w = 360, h = 202;
@@ -875,11 +905,11 @@ function audioBufferToWav(buffer) {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, w, h);
     
-    const block = id.substring(0, 61) || '0'.repeat(61);
+    const block = id.substring(0, 84) || '0'.repeat(84);
     const activeFreqs = [];
-    for (let i = 0; i < 61; i++) {
+    for (let i = 0; i < 84; i++) {
         const volIdx = VOL_CHARS.indexOf(block[i]);
-        if (volIdx > 0) activeFreqs.push({ freq: 200 + ((i / 60) * 3800), amp: volIdx / 83 });
+        if (volIdx > 0) activeFreqs.push({ freq: 200 + ((i / 83) * 3800), amp: volIdx / 83 });
     }
     if(activeFreqs.length === 0) activeFreqs.push({freq: 1000, amp: 0.1}); 
 
@@ -896,20 +926,6 @@ function audioBufferToWav(buffer) {
         else ctx.lineTo(x, h/2 + yOffset);
     }
     ctx.stroke();
-    
-    if (isPlaylist) {
-        ctx.strokeStyle = '#555';
-        ctx.beginPath();
-        for(let x=0; x<w; x++) {
-            let yOffset = 0;
-            activeFreqs.forEach(snd => {
-                yOffset += Math.cos((x+50) * 0.05 * (snd.freq / 500)) * (h / 4) * snd.amp / activeFreqs.length;
-            });
-            if(x===0) ctx.moveTo(x, h/2 + yOffset + 20);
-            else ctx.lineTo(x, h/2 + yOffset + 20);
-        }
-        ctx.stroke();
-    }
 }
         function drawOscilloscope(timeOffset) {
     if(!visualizerCanvas || !visualizerCtx) return;
@@ -922,16 +938,16 @@ function audioBufferToWav(buffer) {
     ctx.fillRect(0, 0, width, height);
 
     const frameIdx = Math.floor(timeOffset / FRAME_DURATION);
-    const block = currentSequence.substring(frameIdx * 61, (frameIdx + 1) * 61) || '0'.repeat(61);
+    const block = currentSequence.substring(frameIdx * 84, (frameIdx + 1) * 84) || '0'.repeat(84);
 
     ctx.strokeStyle = 'var(--accent)';
     ctx.lineWidth = 2;
     ctx.beginPath();
 
     const activeFreqs = [];
-    for (let i = 0; i < 61; i++) {
+    for (let i = 0; i < 84; i++) {
         const volIdx = VOL_CHARS.indexOf(block[i]);
-        if (volIdx > 0) activeFreqs.push({ freq: 200 + ((i / 60) * 3800), amp: volIdx / 83 });
+        if (volIdx > 0) activeFreqs.push({ freq: 200 + ((i / 83) * 3800), amp: volIdx / 83 });
     }
 
     if (activeFreqs.length === 0) {
@@ -981,17 +997,17 @@ function audioBufferToWav(buffer) {
         }
 
         function scheduler() {
-            const totalFrames = Math.floor(currentSequence.length / 62);
-            while (nextNoteTime < audioCtx.currentTime + 0.1 && currentFrame < totalFrames) {
-                scheduleFrame(currentFrame, nextNoteTime);
-                nextNoteTime += FRAME_DURATION;
-                currentFrame++;
-            }
-            if (currentFrame >= totalFrames && nextNoteTime < audioCtx.currentTime) {
-                stopAudio();
-                updateProgressUI(totalFrames * FRAME_DURATION);
-            }
-        }
+    const totalFrames = Math.floor(currentSequence.length / 84);
+    while (nextNoteTime < audioCtx.currentTime + 0.1 && currentFrame < totalFrames) {
+        scheduleFrame(currentFrame, nextNoteTime);
+        nextNoteTime += FRAME_DURATION;
+        currentFrame++;
+    }
+    if (currentFrame >= totalFrames && nextNoteTime < audioCtx.currentTime) {
+        stopAudio();
+        updateProgressUI(totalFrames * FRAME_DURATION);
+    }
+}
     
         // Add this helper for deterministic randomness based on the ID character
 function mulberry32(a) {
@@ -1004,46 +1020,43 @@ function mulberry32(a) {
 }
 
 function scheduleFrame(frameIdx, time) {
-    const blockStart = frameIdx * 61;
-    const block = currentSequence.substring(blockStart, blockStart + 61);
+    const blockStart = frameIdx * 84;
+    const block = currentSequence.substring(blockStart, blockStart + 84);
 
-    if (!block || block.length < 61) return; 
+    if (!block || block.length < 84) return; 
 
     const isFirstFrameAfterSeek = (frameIdx === Math.floor(seekTime / FRAME_DURATION));
     const prevBlock = (frameIdx > 0 && !isFirstFrameAfterSeek) 
-        ? currentSequence.substring((frameIdx - 1) * 61, frameIdx * 61) : null;
+        ? currentSequence.substring((frameIdx - 1) * 84, frameIdx * 84) : null;
 
-    const totalFrames = Math.floor(currentSequence.length / 61);
+    const totalFrames = Math.floor(currentSequence.length / 84);
 
-    // Sum total volume to prevent distortion
     let totalVolumeReq = 0;
-    for (let i = 0; i < 61; i++) {
+    for (let i = 0; i < 84; i++) {
         let vIdx = VOL_CHARS.indexOf(block[i]);
         if (vIdx > 0) totalVolumeReq += (vIdx / 83);
     }
     if (totalVolumeReq === 0) return;
 
-    // Soft limit max volume output scaling so speakers don't explode
     let volumeScale = 1.0;
     if (totalVolumeReq > 2) volumeScale = 2 / totalVolumeReq;
 
-    for (let i = 0; i < 61; i++) {
+    for (let i = 0; i < 84; i++) {
         const volIdx = VOL_CHARS.indexOf(block[i]);
         const isActive = (volIdx > 0);
-        // It sustains if the volume character remains exactly the same
         const wasActive = prevBlock ? (prevBlock[i] === block[i]) : false;
 
         if (isActive && !wasActive) {
             let durationFrames = 1;
             
             for (let f = frameIdx + 1; f < totalFrames; f++) {
-                if (currentSequence[f * 61 + i] === block[i]) durationFrames++;
+                if (currentSequence[f * 84 + i] === block[i]) durationFrames++;
                 else break;
             }
 
             const durationInSecs = durationFrames * FRAME_DURATION;
-            const freq = 200 + ((i / 60) * 3800);
-            const pitchVolume = (volIdx / 83) * volumeScale * 0.5; // Translate 0-83 to true amplitude
+            const freq = 200 + ((i / 83) * 3800);
+            const pitchVolume = (volIdx / 83) * volumeScale * 0.5;
             
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
@@ -1112,15 +1125,33 @@ function drawOscilloscope(timeOffset) {
         }
 
         function updateProgressUI(time) {
-            const tDisp = document.getElementById('timeDisplay');
-            const pFill = document.getElementById('progressFill');
-            if(!tDisp || !pFill) return;
-            
-            const total = (currentSequence.length / 62) * FRAME_DURATION;
-            const safeTime = Math.min(time, total);
-            tDisp.innerText = `${formatTime(safeTime)} / ${formatTime(total)}`;
-            pFill.style.width = `${(safeTime / total) * 100}%`;
-        }
+    const tDisp = document.getElementById('timeDisplay');
+    const pFill = document.getElementById('progressFill');
+    if(!tDisp || !pFill) return;
+    
+    const total = (currentSequence.length / 84) * FRAME_DURATION;
+    const safeTime = Math.min(time, total);
+    tDisp.innerText = `${formatTime(safeTime)} / ${formatTime(total)}`;
+    pFill.style.width = `${(safeTime / total) * 100}%`;
+}
+
+function seekAudio(e) {
+    if(!currentSequence) return;
+    const bar = document.getElementById('progressBar');
+    const rect = bar.getBoundingClientRect();
+    const percent = (e.clientX - rect.left) / rect.width;
+    
+    const total = (currentSequence.length / 84) * FRAME_DURATION;
+    seekTime = percent * total;
+    
+    if(isPlaying) {
+        togglePlay(); 
+        togglePlay();
+    } else {
+        updateProgressUI(seekTime);
+        drawOscilloscope(seekTime);
+    }
+}
 
         function seekAudio(e) {
             if(!currentSequence) return;
