@@ -54,19 +54,29 @@
         }
         th, td {
             text-align: left;
-            padding: 10px 12px;
+            padding: 6px 12px;
             border-bottom: 1px solid var(--border);
             font-size: 0.95rem;
         }
         th {
             background: #15181e;
             color: var(--text-main);
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
         td {
             color: var(--text-secondary);
         }
         td strong {
             color: var(--text-main);
+        }
+        .table-wrapper {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.5rem 0;
         }
         .highlight-box {
             background: #15181e;
@@ -118,51 +128,85 @@
         <code>Frequency = 200 + ((Index / 61) * 3800) Hz</code>
     </div>
 
-    <h3>Detailed Index & Note Breakdown</h3>
-    <p>Below is how character slots translate into frequency ranges and approximate musical notes:</p>
+    <h3>Detailed Character Index Breakdown</h3>
+    <p>Scroll through the table below to see the exact mapping for all 62 character slots.</p>
     
-    <table>
-        <thead>
-            <tr>
-                <th>Base62 Index</th>
-                <th>Example Character Range</th>
-                <th>Frequency Range</th>
-                <th>Approximate Musical Scale / Notes</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><strong>Index 0</strong></td>
-                <td><code>0</code></td>
-                <td>—</td>
-                <td>Silence</td>
-            </tr>
-            <tr>
-                <td><strong>Indices 1 – 10</strong></td>
-                <td><code>1 2 3 4 5 6 7 8 9 a</code></td>
-                <td>262 Hz – 823 Hz</td>
-                <td>Middle register (~C4 to ~G5)</td>
-            </tr>
-            <tr>
-                <td><strong>Indices 11 – 30</strong></td>
-                <td><code>b through u</code></td>
-                <td>885 Hz – 2068 Hz</td>
-                <td>Upper register (~A5 to ~C7)</td>
-            </tr>
-            <tr>
-                <td><strong>Indices 31 – 50</strong></td>
-                <td><code>v through K</code></td>
-                <td>2130 Hz – 3313 Hz</td>
-                <td>High register (~C#7 to ~G8)</td>
-            </tr>
-            <tr>
-                <td><strong>Indices 51 – 61</strong></td>
-                <td><code>L through Z</code></td>
-                <td>3375 Hz – 4000 Hz</td>
-                <td>Ultra-high register (~G#8 and up)</td>
-            </tr>
-        </tbody>
-    </table>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Index</th>
+                    <th>Character Slot</th>
+                    <th>Frequency (Hz)</th>
+                    <th>Approximate Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>0</strong></td><td><code>0</code></td><td>—</td><td>Silence</td></tr>
+                <tr><td><strong>1</strong></td><td><code>1</code></td><td>262 Hz</td><td>~C4</td></tr>
+                <tr><td><strong>2</strong></td><td><code>2</code></td><td>325 Hz</td><td>~E4</td></tr>
+                <tr><td><strong>3</strong></td><td><code>3</code></td><td>387 Hz</td><td>~G4</td></tr>
+                <tr><td><strong>4</strong></td><td><code>4</code></td><td>449 Hz</td><td>~A4</td></tr>
+                <tr><td><strong>5</strong></td><td><code>5</code></td><td>511 Hz</td><td>~C5</td></tr>
+                <tr><td><strong>6</strong></td><td><code>6</code></td><td>574 Hz</td><td>~D5</td></tr>
+                <tr><td><strong>7</strong></td><td><code>7</code></td><td>636 Hz</td><td>~E5</td></tr>
+                <tr><td><strong>8</strong></td><td><code>8</code></td><td>698 Hz</td><td>~F5</td></tr>
+                <tr><td><strong>9</strong></td><td><code>9</code></td><td>761 Hz</td><td>~G5</td></tr>
+                <tr><td><strong>10</strong></td><td><code>a</code></td><td>823 Hz</td><td>~G#5</td></tr>
+                <tr><td><strong>11</strong></td><td><code>b</code></td><td>885 Hz</td><td>~A5</td></tr>
+                <tr><td><strong>12</strong></td><td><code>c</code></td><td>948 Hz</td><td>~A#5</td></tr>
+                <tr><td><strong>13</strong></td><td><code>d</code></td><td>1010 Hz</td><td>~B5</td></tr>
+                <tr><td><strong>14</strong></td><td><code>e</code></td><td>1072 Hz</td><td>~C6</td></tr>
+                <tr><td><strong>15</strong></td><td><code>f</code></td><td>1134 Hz</td><td>~C#6</td></tr>
+                <tr><td><strong>16</strong></td><td><code>g</code></td><td>1197 Hz</td><td>~D6</td></tr>
+                <tr><td><strong>17</strong></td><td><code>h</code></td><td>1259 Hz</td><td>~D#6</td></tr>
+                <tr><td><strong>18</strong></td><td><code>i</code></td><td>1321 Hz</td><td>~E6</td></tr>
+                <tr><td><strong>19</strong></td><td><code>j</code></td><td>1384 Hz</td><td>~F6</td></tr>
+                <tr><td><strong>20</strong></td><td><code>k</code></td><td>1446 Hz</td><td>~F#6</td></tr>
+                <tr><td><strong>21</strong></td><td><code>l</code></td><td>1508 Hz</td><td>~F#6 / G6</td></tr>
+                <tr><td><strong>22</strong></td><td><code>m</code></td><td>1570 Hz</td><td>~G6</td></tr>
+                <tr><td><strong>23</strong></td><td><code>n</code></td><td>1633 Hz</td><td>~G#6</td></tr>
+                <tr><td><strong>24</strong></td><td><code>o</code></td><td>1695 Hz</td><td>~A6</td></tr>
+                <tr><td><strong>25</strong></td><td><code>p</code></td><td>1757 Hz</td><td>~A6</td></tr>
+                <tr><td><strong>26</strong></td><td><code>q</code></td><td>1820 Hz</td><td>~A#6</td></tr>
+                <tr><td><strong>27</strong></td><td><code>r</code></td><td>1882 Hz</td><td>~A#6</td></tr>
+                <tr><td><strong>28</strong></td><td><code>s</code></td><td>1944 Hz</td><td>~B6</td></tr>
+                <tr><td><strong>29</strong></td><td><code>t</code></td><td>2007 Hz</td><td>~B6</td></tr>
+                <tr><td><strong>30</strong></td><td><code>u</code></td><td>2069 Hz</td><td>~C7</td></tr>
+                <tr><td><strong>31</strong></td><td><code>v</code></td><td>2131 Hz</td><td>~C7</td></tr>
+                <tr><td><strong>32</strong></td><td><code>w</code></td><td>2193 Hz</td><td>~C#7</td></tr>
+                <tr><td><strong>33</strong></td><td><code>x</code></td><td>2256 Hz</td><td>~C#7</td></tr>
+                <tr><td><strong>34</strong></td><td><code>y</code></td><td>2318 Hz</td><td>~D7</td></tr>
+                <tr><td><strong>35</strong></td><td><code>z</code></td><td>2380 Hz</td><td>~D7</td></tr>
+                <tr><td><strong>36</strong></td><td><code>A</code></td><td>2443 Hz</td><td>~D#7</td></tr>
+                <tr><td><strong>37</strong></td><td><code>B</code></td><td>2505 Hz</td><td>~D#7</td></tr>
+                <tr><td><strong>38</strong></td><td><code>C</code></td><td>2567 Hz</td><td>~E7</td></tr>
+                <tr><td><strong>39</strong></td><td><code>D</code></td><td>2630 Hz</td><td>~E7</td></tr>
+                <tr><td><strong>40</strong></td><td><code>E</code></td><td>2692 Hz</td><td>~E7 / F7</td></tr>
+                <tr><td><strong>41</strong></td><td><code>F</code></td><td>2754 Hz</td><td>~F7</td></tr>
+                <tr><td><strong>42</strong></td><td><code>G</code></td><td>2816 Hz</td><td>~F7</td></tr>
+                <tr><td><strong>43</strong></td><td><code>H</code></td><td>2879 Hz</td><td>~F#7</td></tr>
+                <tr><td><strong>44</strong></td><td><code>I</code></td><td>2941 Hz</td><td>~F#7</td></tr>
+                <tr><td><strong>45</strong></td><td><code>J</code></td><td>3003 Hz</td><td>~F#7 / G7</td></tr>
+                <tr><td><strong>46</strong></td><td><code>K</code></td><td>3066 Hz</td><td>~G7</td></tr>
+                <tr><td><strong>47</strong></td><td><code>L</code></td><td>3128 Hz</td><td>~G7</td></tr>
+                <tr><td><strong>48</strong></td><td><code>M</code></td><td>3190 Hz</td><td>~G7</td></tr>
+                <tr><td><strong>49</strong></td><td><code>N</code></td><td>3252 Hz</td><td>~G#7</td></tr>
+                <tr><td><strong>50</strong></td><td><code>O</code></td><td>3315 Hz</td><td>~G#7</td></tr>
+                <tr><td><strong>51</strong></td><td><code>P</code></td><td>3377 Hz</td><td>~G#7 / A7</td></tr>
+                <tr><td><strong>52</strong></td><td><code>Q</code></td><td>3439 Hz</td><td>~A7</td></tr>
+                <tr><td><strong>53</strong></td><td><code>R</code></td><td>3502 Hz</td><td>~A7</td></tr>
+                <tr><td><strong>54</strong></td><td><code>S</code></td><td>3564 Hz</td><td>~A7</td></tr>
+                <tr><td><strong>55</strong></td><td><code>T</code></td><td>3626 Hz</td><td>~A7 / A#7</td></tr>
+                <tr><td><strong>56</strong></td><td><code>U</code></td><td>3689 Hz</td><td>~A#7</td></tr>
+                <tr><td><strong>57</strong></td><td><code>V</code></td><td>3751 Hz</td><td>~A#7</td></tr>
+                <tr><td><strong>58</strong></td><td><code>W</code></td><td>3813 Hz</td><td>~A#7</td></tr>
+                <tr><td><strong>59</strong></td><td><code>X</code></td><td>3875 Hz</td><td>~A#7 / B7</td></tr>
+                <tr><td><strong>60</strong></td><td><code>Y</code></td><td>3938 Hz</td><td>~B7</td></tr>
+                <tr><td><strong>61</strong></td><td><code>Z</code></td><td>4000 Hz</td><td>~B7 / C8</td></tr>
+            </tbody>
+        </table>
+    </div>
 
     <h2>3. Application Features</h2>
     <table>
