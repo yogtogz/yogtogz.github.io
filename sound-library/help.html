@@ -91,7 +91,7 @@
 
 <div class="container">
     <h1>Sound Library of Babel</h1>
-    <p>Complete documentation explaining the 62-character block architecture, query syntax rules, audio frequency mapping, and character-to-note equivalents.</p>
+    <p>Complete documentation explaining the 84-character pitch block architecture (ranging from <code>1</code> through <code>?</code>), 84-level volume/velocity mapping, query syntax rules, text search mapping fixes, and audio frequency equivalents.</p>
 
     <h2>1. Frame Structure & Input Syntax</h2>
     <table>
@@ -103,130 +103,242 @@
         </thead>
         <tbody>
             <tr>
-                <td><strong>62-Character Block</strong></td>
-                <td>The base unit of playback. Each block represents exactly <strong>0.1 seconds</strong> of continuous sound. If consecutive blocks contain the same character at the same index, the note will sustain seamlessly across frames without dropping in volume.</td>
+                <td><strong>84-Character Pitch Block</strong></td>
+                <td>The base unit of playback consisting of 84 channels per frame. Each block represents exactly <strong>0.1 seconds</strong> of continuous sound. Consecutive blocks containing the same pitch and volume character sustain seamlessly across frames without dropping. Pitches use the full character set from <code>1</code> through <code>?</code>.</td>
             </tr>
             <tr>
                 <td><strong>`|` (Pipe Separator)</strong></td>
-                <td>Used exclusively in the <strong>Search bar</strong> to chain custom frames together sequentially (e.g., entering <code>hello|world</code> creates a multi-frame sequence where each block plays consecutively for 0.1s).</td>
+                <td>Used exclusively in the <strong>Search bar</strong> to chain custom frames together sequentially (e.g., entering <code>3:?|00030...</code> creates a multi-frame sequence where each block plays consecutively for 0.1s).</td>
+            </tr>
+            <tr>
+                <td><strong>`:` (Colons for Custom Volume)</strong></td>
+                <td>Used in the search bar to specify exact volumes per pitch using the <code>pitch:vol</code> syntax (e.g. <code>3:?</code> places maximum volume at pitch slot 3). If omitted in literal searches, search queries map input characters directly across slots.</td>
             </tr>
             <tr>
                 <td><strong>`0` (Zero)</strong></td>
-                <td>Represents silence. Can occupy any index to turn off that specific pitch channel for that frame.</td>
+                <td>Represents complete silence or an inactive pitch slot.</td>
             </tr>
         </tbody>
     </table>
 
-    <h2>2. Character-to-Frequency & Note Mapping</h2>
-    <p>The library uses the standard Base62 character set: <br>
-    <code>0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ</code></p>
+    <h2>2. Text Search & Query Mapping (Bug Fixes)</h2>
+    <div class="highlight-box">
+        <strong>Search Resolution Fix:</strong> 
+        Previously, searching text queries like <code>one</code> or <code>three</code> produced erroneous default outputs (such as <code>10000...</code> or <code>30000...</code>) due to improper index mapping. 
+        <br><br>
+        <strong>Corrected Behavior:</strong> Text search queries now map input characters directly across the 84-character block slots using the full 84-character set. Explicit pitch selection (e.g., searching <code>3:?</code>) correctly targets index 2 (slot 3) resulting in <code>00?00...</code> instead of static misaligned fallbacks.
+    </div>
+
+    <h2>3. Character-to-Frequency & Pitch Mapping (1 through `?`)</h2>
+    <p>The library uses an 84-level pitch character set spanning from <code>1</code> to <code>?</code>: <br>
+    <code>123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ~!@#$%^&*()-_=+,<.>/?</code></p>
     
     <div class="highlight-box">
         <strong>The Mathematical Formula:</strong> 
-        Except for index <code>0</code> (which is always silence), every position <code>i</code> from <code>1</code> to <code>61</code> maps to a unique sine wave frequency using the linear progression formula:
+        Every position from index <code>0</code> to <code>83</code> maps to a unique sine wave frequency using the linear progression formula:
         <br><br>
-        <code>Frequency = 200 + ((Index / 61) * 3800) Hz</code>
+        <code>Frequency = 200 + ((Index / 83) * 3800) Hz</code>
     </div>
 
-    <h3>Detailed Character Index Breakdown</h3>
-    <p>Scroll through the table below to see the exact mapping for all 62 character slots.</p>
+    <h3>Detailed Pitch Character Index Breakdown</h3>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Index</th>
+                    <th>Pitch Character</th>
+                    <th>Frequency (Hz)</th>
+                    <th>Approximate Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>0</strong></td><td><code>1</code></td><td>200.0 Hz</td><td>~G3</td></tr>
+                <tr><td><strong>1</strong></td><td><code>2</code></td><td>245.8 Hz</td><td>~B3</td></tr>
+                <tr><td><strong>2</strong></td><td><code>3</code></td><td>291.6 Hz</td><td>~D4</td></tr>
+                <tr><td><strong>3</strong></td><td><code>4</code></td><td>337.3 Hz</td><td>~E4</td></tr>
+                <tr><td><strong>4</strong></td><td><code>5</code></td><td>383.1 Hz</td><td>~G4</td></tr>
+                <tr><td><strong>5</strong></td><td><code>6</code></td><td>428.9 Hz</td><td>~A4</td></tr>
+                <tr><td><strong>6</strong></td><td><code>7</code></td><td>474.7 Hz</td><td>~B4</td></tr>
+                <tr><td><strong>7</strong></td><td><code>8</code></td><td>520.5 Hz</td><td>~C5</td></tr>
+                <tr><td><strong>8</strong></td><td><code>9</code></td><td>566.3 Hz</td><td>~C#5</td></tr>
+                <tr><td><strong>9</strong></td><td><code>a</code></td><td>612.0 Hz</td><td>~D#5</td></tr>
+                <tr><td><strong>10</strong></td><td><code>b</code></td><td>657.8 Hz</td><td>~E5</td></tr>
+                <tr><td><strong>11</strong></td><td><code>c</code></td><td>703.6 Hz</td><td>~F5</td></tr>
+                <tr><td><strong>12</strong></td><td><code>d</code></td><td>749.4 Hz</td><td>~F#5</td></tr>
+                <tr><td><strong>13</strong></td><td><code>e</code></td><td>795.2 Hz</td><td>~G5</td></tr>
+                <tr><td><strong>14</strong></td><td><code>f</code></td><td>841.0 Hz</td><td>~G#5</td></tr>
+                <tr><td><strong>15</strong></td><td><code>g</code></td><td>886.7 Hz</td><td>~A5</td></tr>
+                <tr><td><strong>16</strong></td><td><code>h</code></td><td>932.5 Hz</td><td>~A#5</td></tr>
+                <tr><td><strong>17</strong></td><td><code>i</code></td><td>978.3 Hz</td><td>~B5</td></tr>
+                <tr><td><strong>18</strong></td><td><code>j</code></td><td>1024.1 Hz</td><td>~C6</td></tr>
+                <tr><td><strong>19</strong></td><td><code>k</code></td><td>1069.9 Hz</td><td>~C#6</td></tr>
+                <tr><td><strong>20</strong></td><td><code>l</code></td><td>1115.7 Hz</td><td>~D6</td></tr>
+                <tr><td><strong>21</strong></td><td><code>m</code></td><td>1161.4 Hz</td><td>~D#6</td></tr>
+                <tr><td><strong>22</strong></td><td><code>n</code></td><td>1207.2 Hz</td><td>~E6</td></tr>
+                <tr><td><strong>23</strong></td><td><code>o</code></td><td>1253.0 Hz</td><td>~E6</td></tr>
+                <tr><td><strong>24</strong></td><td><code>p</code></td><td>1298.8 Hz</td><td>~E6 / F6</td></tr>
+                <tr><td><strong>25</strong></td><td><code>q</code></td><td>1344.6 Hz</td><td>~F6</td></tr>
+                <tr><td><strong>26</strong></td><td><code>r</code></td><td>1390.4 Hz</td><td>~F#6</td></tr>
+                <tr><td><strong>27</strong></td><td><code>s</code></td><td>1436.1 Hz</td><td>~F#6</td></tr>
+                <tr><td><strong>28</strong></td><td><code>t</code></td><td>1481.9 Hz</td><td>~G6</td></tr>
+                <tr><td><strong>29</strong></td><td><code>u</code></td><td>1527.7 Hz</td><td>~G6</td></tr>
+                <tr><td><strong>30</strong></td><td><code>v</code></td><td>1573.5 Hz</td><td>~G#6</td></tr>
+                <tr><td><strong>31</strong></td><td><code>w</code></td><td>1619.3 Hz</td><td>~G#6</td></tr>
+                <tr><td><strong>32</strong></td><td><code>x</code></td><td>1665.1 Hz</td><td>~A6</td></tr>
+                <tr><td><strong>33</strong></td><td><code>y</code></td><td>1710.8 Hz</td><td>~A6</td></tr>
+                <tr><td><strong>34</strong></td><td><code>z</code></td><td>1756.6 Hz</td><td>~A#6</td></tr>
+                <tr><td><strong>35</strong></td><td><code>A</code></td><td>1802.4 Hz</td><td>~A#6</td></tr>
+                <tr><td><strong>36</strong></td><td><code>B</code></td><td>1848.2 Hz</td><td>~B6</td></tr>
+                <tr><td><strong>37</strong></td><td><code>C</code></td><td>1894.0 Hz</td><td>~B6</td></tr>
+                <tr><td><strong>38</strong></td><td><code>D</code></td><td>1939.8 Hz</td><td>~B6 / C7</td></tr>
+                <tr><td><strong>39</strong></td><td><code>E</code></td><td>1985.5 Hz</td><td>~C7</td></tr>
+                <tr><td><strong>40</strong></td><td><code>F</code></td><td>2031.3 Hz</td><td>~C7</td></tr>
+                <tr><td><strong>41</strong></td><td><code>G</code></td><td>2077.1 Hz</td><td>~C#7</td></tr>
+                <tr><td><strong>42</strong></td><td><code>H</code></td><td>2122.9 Hz</td><td>~C#7</td></tr>
+                <tr><td><strong>43</strong></td><td><code>I</code></td><td>2168.7 Hz</td><td>~D7</td></tr>
+                <tr><td><strong>44</strong></td><td><code>J</code></td><td>2214.5 Hz</td><td>~D7</td></tr>
+                <tr><td><strong>45</strong></td><td><code>K</code></td><td>2260.2 Hz</td><td>~D#7</td></tr>
+                <tr><td><strong>46</strong></td><td><code>L</code></td><td>2306.0 Hz</td><td>~D#7</td></tr>
+                <tr><td><strong>47</strong></td><td><code>M</code></td><td>2351.8 Hz</td><td>~E7</td></tr>
+                <tr><td><strong>48</strong></td><td><code>N</code></td><td>2397.6 Hz</td><td>~E7</td></tr>
+                <tr><td><strong>49</strong></td><td><code>O</code></td><td>2443.4 Hz</td><td>~E7 / F7</td></tr>
+                <tr><td><strong>50</strong></td><td><code>P</code></td><td>2489.2 Hz</td><td>~F7</td></tr>
+                <tr><td><strong>51</strong></td><td><code>Q</code></td><td>2534.9 Hz</td><td>~F7</td></tr>
+                <tr><td><strong>52</strong></td><td><code>R</code></td><td>2580.7 Hz</td><td>~F#7</td></tr>
+                <tr><td><strong>53</strong></td><td><code>S</code></td><td>2626.5 Hz</td><td>~F#7</td></tr>
+                <tr><td><strong>54</strong></td><td><code>T</code></td><td>2672.3 Hz</td><td>~G7</td></tr>
+                <tr><td><strong>55</strong></td><td><code>U</code></td><td>2718.1 Hz</td><td>~G7</td></tr>
+                <tr><td><strong>56</strong></td><td><code>V</code></td><td>2763.9 Hz</td><td>~G#7</td></tr>
+                <tr><td><strong>57</strong></td><td><code>W</code></td><td>2809.6 Hz</td><td>~G#7</td></tr>
+                <tr><td><strong>58</strong></td><td><code>X</code></td><td>2855.4 Hz</td><td>~A7</td></tr>
+                <tr><td><strong>59</strong></td><td><code>Y</code></td><td>2901.2 Hz</td><td>~A7</td></tr>
+                <tr><td><strong>60</strong></td><td><code>Z</code></td><td>2947.0 Hz</td><td>~A#7</td></tr>
+                <tr><td><strong>61</strong></td><td><code>~</code></td><td>2992.8 Hz</td><td>~A#7</td></tr>
+                <tr><td><strong>62</strong></td><td><code>!</code></td><td>3038.6 Hz</td><td>~B7</td></tr>
+                <tr><td><strong>63</strong></td><td><code>@</code></td><td>3084.3 Hz</td><td>~B7</td></tr>
+                <tr><td><strong>64</strong></td><td><code>#</code></td><td>3130.1 Hz</td><td>~C8</td></tr>
+                <tr><td><strong>65</strong></td><td><code>$</code></td><td>3175.9 Hz</td><td>~C8</td></tr>
+                <tr><td><strong>66</strong></td><td><code>%</code></td><td>3221.7 Hz</td><td>~C#8</td></tr>
+                <tr><td><strong>67</strong></td><td><code>^</code></td><td>3267.5 Hz</td><td>~C#8</td></tr>
+                <tr><td><strong>68</strong></td><td><code>&amp;</code></td><td>3313.3 Hz</td><td>~D8</td></tr>
+                <tr><td><strong>69</strong></td><td><code>*</code></td><td>3359.0 Hz</td><td>~D8</td></tr>
+                <tr><td><strong>70</strong></td><td><code>(</code></td><td>404.8 Hz</td><td>~D#8</td></tr>
+                <tr><td><strong>71</strong></td><td><code>)</code></td><td>3450.6 Hz</td><td>~D#8</td></tr>
+                <tr><td><strong>72</strong></td><td><code>-</code></td><td>3496.4 Hz</td><td>~E8</td></tr>
+                <tr><td><strong>73</strong></td><td><code>_</code></td><td>3542.2 Hz</td><td>~E8</td></tr>
+                <tr><td><strong>74</strong></td><td><code>=</code></td><td>3588.0 Hz</td><td>~F8</td></tr>
+                <tr><td><strong>75</strong></td><td><code>+</code></td><td>3633.7 Hz</td><td>~F8</td></tr>
+                <tr><td><strong>76</strong></td><td><code>,</code></td><td>3679.5 Hz</td><td>~F#8</td></tr>
+                <tr><td><strong>77</strong></td><td><code>&lt;</code></td><td>3725.3 Hz</td><td>~F#8</td></tr>
+                <tr><td><strong>78</strong></td><td><code>.</code></td><td>3771.1 Hz</td><td>~G8</td></tr>
+                <tr><td><strong>79</strong></td><td><code>&gt;</code></td><td>3816.9 Hz</td><td>~G8</td></tr>
+                <tr><td><strong>80</strong></td><td><code>/</code></td><td>3862.7 Hz</td><td>~G#8</td></tr>
+                <tr><td><strong>81</strong></td><td><code>?</code></td><td>4000.0 Hz</td><td>~E8 (Max)</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h2>4. Volume Character & Velocity Mapping (One by One)</h2>
+    <p>Each volume level from index <code>0</code> through <code>83</code> mapped individually:</p>
     
     <div class="table-wrapper">
         <table>
             <thead>
                 <tr>
                     <th>Index</th>
-                    <th>Character Slot</th>
-                    <th>Frequency (Hz)</th>
-                    <th>Approximate Note</th>
+                    <th>Character</th>
+                    <th>Volume Level (%)</th>
+                    <th>Description</th>
                 </tr>
             </thead>
             <tbody>
-                <tr><td><strong>0</strong></td><td><code>0</code></td><td>—</td><td>Silence</td></tr>
-                <tr><td><strong>1</strong></td><td><code>1</code></td><td>262 Hz</td><td>~C4</td></tr>
-                <tr><td><strong>2</strong></td><td><code>2</code></td><td>325 Hz</td><td>~E4</td></tr>
-                <tr><td><strong>3</strong></td><td><code>3</code></td><td>387 Hz</td><td>~G4</td></tr>
-                <tr><td><strong>4</strong></td><td><code>4</code></td><td>449 Hz</td><td>~A4</td></tr>
-                <tr><td><strong>5</strong></td><td><code>5</code></td><td>511 Hz</td><td>~C5</td></tr>
-                <tr><td><strong>6</strong></td><td><code>6</code></td><td>574 Hz</td><td>~D5</td></tr>
-                <tr><td><strong>7</strong></td><td><code>7</code></td><td>636 Hz</td><td>~E5</td></tr>
-                <tr><td><strong>8</strong></td><td><code>8</code></td><td>698 Hz</td><td>~F5</td></tr>
-                <tr><td><strong>9</strong></td><td><code>9</code></td><td>761 Hz</td><td>~G5</td></tr>
-                <tr><td><strong>10</strong></td><td><code>a</code></td><td>823 Hz</td><td>~G#5</td></tr>
-                <tr><td><strong>11</strong></td><td><code>b</code></td><td>885 Hz</td><td>~A5</td></tr>
-                <tr><td><strong>12</strong></td><td><code>c</code></td><td>948 Hz</td><td>~A#5</td></tr>
-                <tr><td><strong>13</strong></td><td><code>d</code></td><td>1010 Hz</td><td>~B5</td></tr>
-                <tr><td><strong>14</strong></td><td><code>e</code></td><td>1072 Hz</td><td>~C6</td></tr>
-                <tr><td><strong>15</strong></td><td><code>f</code></td><td>1134 Hz</td><td>~C#6</td></tr>
-                <tr><td><strong>16</strong></td><td><code>g</code></td><td>1197 Hz</td><td>~D6</td></tr>
-                <tr><td><strong>17</strong></td><td><code>h</code></td><td>1259 Hz</td><td>~D#6</td></tr>
-                <tr><td><strong>18</strong></td><td><code>i</code></td><td>1321 Hz</td><td>~E6</td></tr>
-                <tr><td><strong>19</strong></td><td><code>j</code></td><td>1384 Hz</td><td>~F6</td></tr>
-                <tr><td><strong>20</strong></td><td><code>k</code></td><td>1446 Hz</td><td>~F#6</td></tr>
-                <tr><td><strong>21</strong></td><td><code>l</code></td><td>1508 Hz</td><td>~F#6 / G6</td></tr>
-                <tr><td><strong>22</strong></td><td><code>m</code></td><td>1570 Hz</td><td>~G6</td></tr>
-                <tr><td><strong>23</strong></td><td><code>n</code></td><td>1633 Hz</td><td>~G#6</td></tr>
-                <tr><td><strong>24</strong></td><td><code>o</code></td><td>1695 Hz</td><td>~A6</td></tr>
-                <tr><td><strong>25</strong></td><td><code>p</code></td><td>1757 Hz</td><td>~A6</td></tr>
-                <tr><td><strong>26</strong></td><td><code>q</code></td><td>1820 Hz</td><td>~A#6</td></tr>
-                <tr><td><strong>27</strong></td><td><code>r</code></td><td>1882 Hz</td><td>~A#6</td></tr>
-                <tr><td><strong>28</strong></td><td><code>s</code></td><td>1944 Hz</td><td>~B6</td></tr>
-                <tr><td><strong>29</strong></td><td><code>t</code></td><td>2007 Hz</td><td>~B6</td></tr>
-                <tr><td><strong>30</strong></td><td><code>u</code></td><td>2069 Hz</td><td>~C7</td></tr>
-                <tr><td><strong>31</strong></td><td><code>v</code></td><td>2131 Hz</td><td>~C7</td></tr>
-                <tr><td><strong>32</strong></td><td><code>w</code></td><td>2193 Hz</td><td>~C#7</td></tr>
-                <tr><td><strong>33</strong></td><td><code>x</code></td><td>2256 Hz</td><td>~C#7</td></tr>
-                <tr><td><strong>34</strong></td><td><code>y</code></td><td>2318 Hz</td><td>~D7</td></tr>
-                <tr><td><strong>35</strong></td><td><code>z</code></td><td>2380 Hz</td><td>~D7</td></tr>
-                <tr><td><strong>36</strong></td><td><code>A</code></td><td>2443 Hz</td><td>~D#7</td></tr>
-                <tr><td><strong>37</strong></td><td><code>B</code></td><td>2505 Hz</td><td>~D#7</td></tr>
-                <tr><td><strong>38</strong></td><td><code>C</code></td><td>2567 Hz</td><td>~E7</td></tr>
-                <tr><td><strong>39</strong></td><td><code>D</code></td><td>2630 Hz</td><td>~E7</td></tr>
-                <tr><td><strong>40</strong></td><td><code>E</code></td><td>2692 Hz</td><td>~E7 / F7</td></tr>
-                <tr><td><strong>41</strong></td><td><code>F</code></td><td>2754 Hz</td><td>~F7</td></tr>
-                <tr><td><strong>42</strong></td><td><code>G</code></td><td>2816 Hz</td><td>~F7</td></tr>
-                <tr><td><strong>43</strong></td><td><code>H</code></td><td>2879 Hz</td><td>~F#7</td></tr>
-                <tr><td><strong>44</strong></td><td><code>I</code></td><td>2941 Hz</td><td>~F#7</td></tr>
-                <tr><td><strong>45</strong></td><td><code>J</code></td><td>3003 Hz</td><td>~F#7 / G7</td></tr>
-                <tr><td><strong>46</strong></td><td><code>K</code></td><td>3066 Hz</td><td>~G7</td></tr>
-                <tr><td><strong>47</strong></td><td><code>L</code></td><td>3128 Hz</td><td>~G7</td></tr>
-                <tr><td><strong>48</strong></td><td><code>M</code></td><td>3190 Hz</td><td>~G7</td></tr>
-                <tr><td><strong>49</strong></td><td><code>N</code></td><td>3252 Hz</td><td>~G#7</td></tr>
-                <tr><td><strong>50</strong></td><td><code>O</code></td><td>3315 Hz</td><td>~G#7</td></tr>
-                <tr><td><strong>51</strong></td><td><code>P</code></td><td>3377 Hz</td><td>~G#7 / A7</td></tr>
-                <tr><td><strong>52</strong></td><td><code>Q</code></td><td>3439 Hz</td><td>~A7</td></tr>
-                <tr><td><strong>53</strong></td><td><code>R</code></td><td>3502 Hz</td><td>~A7</td></tr>
-                <tr><td><strong>54</strong></td><td><code>S</code></td><td>3564 Hz</td><td>~A7</td></tr>
-                <tr><td><strong>55</strong></td><td><code>T</code></td><td>3626 Hz</td><td>~A7 / A#7</td></tr>
-                <tr><td><strong>56</strong></td><td><code>U</code></td><td>3689 Hz</td><td>~A#7</td></tr>
-                <tr><td><strong>57</strong></td><td><code>V</code></td><td>3751 Hz</td><td>~A#7</td></tr>
-                <tr><td><strong>58</strong></td><td><code>W</code></td><td>3813 Hz</td><td>~A#7</td></tr>
-                <tr><td><strong>59</strong></td><td><code>X</code></td><td>3875 Hz</td><td>~A#7 / B7</td></tr>
-                <tr><td><strong>60</strong></td><td><code>Y</code></td><td>3938 Hz</td><td>~B7</td></tr>
-                <tr><td><strong>61</strong></td><td><code>Z</code></td><td>4000 Hz</td><td>~B7 / C8</td></tr>
+                <tr><td><strong>0</strong></td><td><code>0</code></td><td>0.0%</td><td>Silence / Inactive</td></tr>
+                <tr><td><strong>1</strong></td><td><code>1</code></td><td>1.2%</td><td>Very Low Velocity</td></tr>
+                <tr><td><strong>2</strong></td><td><code>2</code></td><td>2.4%</td><td>Very Low Velocity</td></tr>
+                <tr><td><strong>3</strong></td><td><code>3</code></td><td>3.6%</td><td>Very Low Velocity</td></tr>
+                <tr><td><strong>4</strong></td><td><code>4</code></td><td>4.8%</td><td>Very Low Velocity</td></tr>
+                <tr><td><strong>5</strong></td><td><code>5</code></td><td>6.0%</td><td>Very Low Velocity</td></tr>
+                <tr><td><strong>6</strong></td><td><code>6</code></td><td>7.2%</td><td>Very Low Velocity</td></tr>
+                <tr><td><strong>7</strong></td><td><code>7</code></td><td>8.4%</td><td>Very Low Velocity</td></tr>
+                <tr><td><strong>8</strong></td><td><code>8</code></td><td>9.6%</td><td>Very Low Velocity</td></tr>
+                <tr><td><strong>9</strong></td><td><code>9</code></td><td>10.8%</td><td>Very Low Velocity</td></tr>
+                <tr><td><strong>10</strong></td><td><code>a</code></td><td>12.0%</td><td>Low Velocity</td></tr>
+                <tr><td><strong>11</strong></td><td><code>b</code></td><td>13.3%</td><td>Low Velocity</td></tr>
+                <tr><td><strong>12</strong></td><td><code>c</code></td><td>14.5%</td><td>Low Velocity</td></tr>
+                <tr><td><strong>13</strong></td><td><code>d</code></td><td>15.7%</td><td>Low Velocity</td></tr>
+                <tr><td><strong>14</strong></td><td><code>e</code></td><td>16.9%</td><td>Low Velocity</td></tr>
+                <tr><td><strong>15</strong></td><td><code>f</code></td><td>18.1%</td><td>Low Velocity</td></tr>
+                <tr><td><strong>16</strong></td><td><code>g</code></td><td>19.3%</td><td>Low Velocity</td></tr>
+                <tr><td><strong>17</strong></td><td><code>h</code></td><td>20.5%</td><td>Low Velocity</td></tr>
+                <tr><td><strong>18</strong></td><td><code>i</code></td><td>21.7%</td><td>Low Velocity</td></tr>
+                <tr><td><strong>19</strong></td><td><code>j</code></td><td>22.9%</td><td>Low Velocity</td></tr>
+                <tr><td><strong>20</strong></td><td><code>k</code></td><td>24.1%</td><td>Medium-Low Velocity</td></tr>
+                <tr><td><strong>21</strong></td><td><code>l</code></td><td>25.3%</td><td>Medium-Low Velocity</td></tr>
+                <tr><td><strong>22</strong></td><td><code>m</code></td><td>26.5%</td><td>Medium-Low Velocity</td></tr>
+                <tr><td><strong>23</strong></td><td><code>n</code></td><td>27.7%</td><td>Medium-Low Velocity</td></tr>
+                <tr><td><strong>24</strong></td><td><code>o</code></td><td>28.9%</td><td>Medium-Low Velocity</td></tr>
+                <tr><td><strong>25</strong></td><td><code>p</code></td><td>30.1%</td><td>Medium-Low Velocity</td></tr>
+                <tr><td><strong>26</strong></td><td><code>q</code></td><td>31.3%</td><td>Medium-Low Velocity</td></tr>
+                <tr><td><strong>27</strong></td><td><code>r</code></td><td>32.5%</td><td>Medium-Low Velocity</td></tr>
+                <tr><td><strong>28</strong></td><td><code>s</code></td><td>33.7%</td><td>Medium-Low Velocity</td></tr>
+                <tr><td><strong>29</strong></td><td><code>t</code></td><td>34.9%</td><td>Medium-Low Velocity</td></tr>
+                <tr><td><strong>30</strong></td><td><code>u</code></td><td>36.1%</td><td>Medium Velocity</td></tr>
+                <tr><td><strong>31</strong></td><td><code>v</code></td><td>37.3%</td><td>Medium Velocity</td></tr>
+                <tr><td><strong>32</strong></td><td><code>w</code></td><td>38.6%</td><td>Medium Velocity</td></tr>
+                <tr><td><strong>33</strong></td><td><code>x</code></td><td>39.8%</td><td>Medium Velocity</td></tr>
+                <tr><td><strong>34</strong></td><td><code>y</code></td><td>41.0%</td><td>Medium Velocity</td></tr>
+                <tr><td><strong>35</strong></td><td><code>z</code></td><td>42.2%</td><td>Medium Velocity</td></tr>
+                <tr><td><strong>36</strong></td><td><code>A</code></td><td>43.4%</td><td>Medium Velocity</td></tr>
+                <tr><td><strong>37</strong></td><td><code>B</code></td><td>44.6%</td><td>Medium Velocity</td></tr>
+                <tr><td><strong>38</strong></td><td><code>C</code></td><td>45.8%</td><td>Medium Velocity</td></tr>
+                <tr><td><strong>39</strong></td><td><code>D</code></td><td>47.0%</td><td>Medium Velocity</td></tr>
+                <tr><td><strong>40</strong></td><td><code>E</code></td><td>48.2%</td><td>Medium-High Velocity</td></tr>
+                <tr><td><strong>41</strong></td><td><code>F</code></td><td>49.4%</td><td>Medium-High Velocity</td></tr>
+                <tr><td><strong>42</strong></td><td><code>G</code></td><td>50.6%</td><td>Medium-High Velocity</td></tr>
+                <tr><td><strong>43</strong></td><td><code>H</code></td><td>51.8%</td><td>Medium-High Velocity</td></tr>
+                <tr><td><strong>44</strong></td><td><code>I</code></td><td>53.0%</td><td>Medium-High Velocity</td></tr>
+                <tr><td><strong>45</strong></td><td><code>J</code></td><td>54.2%</td><td>Medium-High Velocity</td></tr>
+                <tr><td><strong>46</strong></td><td><code>K</code></td><td>55.4%</td><td>Medium-High Velocity</td></tr>
+                <tr><td><strong>47</strong></td><td><code>L</code></td><td>56.6%</td><td>Medium-High Velocity</td></tr>
+                <tr><td><strong>48</strong></td><td><code>M</code></td><td>57.8%</td><td>Medium-High Velocity</td></tr>
+                <tr><td><strong>49</strong></td><td><code>N</code></td><td>59.0%</td><td>Medium-High Velocity</td></tr>
+                <tr><td><strong>50</strong></td><td><code>O</code></td><td>60.2%</td><td>High Velocity</td></tr>
+                <tr><td><strong>51</strong></td><td><code>P</code></td><td>61.4%</td><td>High Velocity</td></tr>
+                <tr><td><strong>52</strong></td><td><code>Q</code></td><td>62.7%</td><td>High Velocity</td></tr>
+                <tr><td><strong>53</strong></td><td><code>R</code></td><td>63.9%</td><td>High Velocity</td></tr>
+                <tr><td><strong>54</strong></td><td><code>S</code></td><td>65.1%</td><td>High Velocity</td></tr>
+                <tr><td><strong>55</strong></td><td><code>T</code></td><td>66.3%</td><td>High Velocity</td></tr>
+                <tr><td><strong>56</strong></td><td><code>U</code></td><td>67.5%</td><td>High Velocity</td></tr>
+                <tr><td><strong>57</strong></td><td><code>V</code></td><td>68.7%</td><td>High Velocity</td></tr>
+                <tr><td><strong>58</strong></td><td><code>W</code></td><td>69.9%</td><td>High Velocity</td></tr>
+                <tr><td><strong>59</strong></td><td><code>X</code></td><td>71.1%</td><td>High Velocity</td></tr>
+                <tr><td><strong>60</strong></td><td><code>Y</code></td><td>72.3%</td><td>Very High Velocity</td></tr>
+                <tr><td><strong>61</strong></td><td><code>Z</code></td><td>73.5%</td><td>Very High Velocity</td></tr>
+                <tr><td><strong>62</strong></td><td><code>~</code></td><td>74.7%</td><td>Very High Velocity</td></tr>
+                <tr><td><strong>63</strong></td><td><code>!</code></td><td>75.9%</td><td>Very High Velocity</td></tr>
+                <tr><td><strong>64</strong></td><td><code>@</code></td><td>77.1%</td><td>Very High Velocity</td></tr>
+                <tr><td><strong>65</strong></td><td><code>#</code></td><td>78.3%</td><td>Very High Velocity</td></tr>
+                <tr><td><strong>66</strong></td><td><code>$</code></td><td>79.5%</td><td>Very High Velocity</td></tr>
+                <tr><td><strong>67</strong></td><td><code>%</code></td><td>80.7%</td><td>Very High Velocity</td></tr>
+                <tr><td><strong>68</strong></td><td><code>^</code></td><td>81.9%</td><td>Very High Velocity</td></tr>
+                <tr><td><strong>69</strong></td><td><code>&amp;</code></td><td>83.1%</td><td>Very High Velocity</td></tr>
+                <tr><td><strong>70</strong></td><td><code>*</code></td><td>84.3%</td><td>Maximum Velocity Range</td></tr>
+                <tr><td><strong>71</strong></td><td><code>(</code></td><td>85.5%</td><td>Maximum Velocity Range</td></tr>
+                <tr><td><strong>72</strong></td><td><code>)</code></td><td>86.7%</td><td>Maximum Velocity Range</td></tr>
+                <tr><td><strong>73</strong></td><td><code>-</code></td><td>88.0%</td><td>Maximum Velocity Range</td></tr>
+                <tr><td><strong>74</strong></td><td><code>_</code></td><td>89.2%</td><td>Maximum Velocity Range</td></tr>
+                <tr><td><strong>75</strong></td><td><code>=</code></td><td>90.4%</td><td>Maximum Velocity Range</td></tr>
+                <tr><td><strong>76</strong></td><td><code>+</code></td><td>91.6%</td><td>Maximum Velocity Range</td></tr>
+                <tr><td><strong>77</strong></td><td><code>,</code></td><td>92.8%</td><td>Maximum Velocity Range</td></tr>
+                <tr><td><strong>78</strong></td><td><code>&lt;</code></td><td>94.0%</td><td>Maximum Velocity Range</td></tr>
+                <tr><td><strong>79</strong></td><td><code>.</code></td><td>95.2%</td><td>Maximum Velocity Range</td></tr>
+                <tr><td><strong>80</strong></td><td><code>&gt;</code></td><td>96.4%</td><td>Maximum Velocity Range</td></tr>
+                <tr><td><strong>81</strong></td><td><code>/</code></td><td>97.6%</td><td>Maximum Velocity Range</td></tr>
+                <tr><td><strong>82</strong></td><td><code>?</code></td><td>98.8%</td><td>Maximum Velocity Range</td></tr>
+                <tr><td><strong>83</strong></td><td><code>?</code></td><td>100.0%</td><td>Normal Max Volume (Default)</td></tr>
             </tbody>
         </table>
     </div>
-
-    <h2>3. Application Features</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Feature</th>
-                <th>Description</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><strong>Nicknamed Sounds</strong></td>
-                <td>Curated audio sequences mapped to human-readable titles in <code>nicknames.json</code>. Automatically compiled into a dedicated, scrollable playlist tab.</td>
-            </tr>
-            <tr>
-                <td><strong>Client-Side WAV Export</strong></td>
-                <td>Uses an <code>OfflineAudioContext</code> to render the sequence directly in the browser and package it into an uncompressed <code>.wav</code> file. Applies exact sustain logic so continuous notes are generated perfectly.</td>
-            </tr>
-        </tbody>
-    </table>
 </div>
 
 </body>
