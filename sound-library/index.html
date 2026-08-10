@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sound Library of Babel</title>
+    <title>Music Library</title>
     <style>
         :root {
             --bg-color: #0f0f0f;
@@ -56,15 +56,15 @@
         
         /* Fixed Responsive Grid */
         .grid { 
-            display: grid; 
-            grid-template-columns: repeat(3, minmax(0, 1fr)); 
-            gap: 16px; 
-            margin-bottom: 24px; 
-            width: 100%; 
-            box-sizing: border-box;
-        }
-        @media(max-width: 900px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        @media(max-width: 600px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+    display: grid; 
+    grid-template-columns: repeat(3, minmax(0, 1fr)); 
+    gap: 16px; 
+    margin-bottom: 24px; 
+    width: 100%; 
+    box-sizing: border-box;
+}
+@media(max-width: 900px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media(max-width: 600px) { .grid { grid-template-columns: minmax(0, 1fr); } }
         
         /* Video Cards */
         .video-card { display: flex; flex-direction: column; gap: 12px; cursor: pointer; height: 100%; }
@@ -85,12 +85,12 @@
         .main-player-area { flex: 3; min-width: 60%; }
         .player-wrapper { width: 100%; aspect-ratio: 16/9; background: var(--player-bg); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--border-color); }
         #visualizer { 
-            flex: 1; 
-            width: 100%; 
-            min-height: 300px;
-            background: #000; 
-            display: block; 
-        }
+    flex: 1; 
+    width: 100%; 
+    min-height: 300px; /* Forces it to appear if flex acts up */
+    background: #000; 
+    display: block; 
+}
         
         .controls { height: 48px; background: rgba(0,0,0,0.9); display: flex; align-items: center; padding: 0 16px; gap: 16px; color: white; width: 100%; border-top: 1px solid #333; }
         .play-btn { width: 0; height: 0; border-top: 8px solid transparent; border-bottom: 8px solid transparent; border-left: 14px solid white; cursor: pointer; }
@@ -154,7 +154,7 @@
             <span>Sound Library of Babel</span>
         </div>
         <form class="search-bar" onsubmit="event.preventDefault(); triggerSearch();">
-            <input type="text" id="searchInput" placeholder="Search pitch|pitch or pitch:vol|pitch:vol (e.g. a:Z|b:? or raw ID)">
+            <input type="text" id="searchInput" placeholder="Search string and separate frames using |">
             <button type="submit">🔍</button>
         </form>
         <div class="avatar" id="avatarBtn" onclick="toggleAccountMenu()">?</div>
@@ -171,24 +171,23 @@
 
     <div class="layout">
         <div class="sidebar">
-            <div class="sidebar-item active" id="navHome" onclick="goHome()">🏠 Home</div>
-            <div class="sidebar-item" onclick="goRandom()">🎲 Random Sound</div>
-            <hr style="width: 100%; border: 0.5px solid var(--border-color); margin: 8px 0;">
-            <div class="sidebar-item" id="navPlaylists" onclick="goPlaylists()">📋 Playlists</div>
-            <div class="sidebar-item" id="navFavs" onclick="goFavorites()">❤️ Favorites</div>
-            <div class="sidebar-item" onclick="window.location.href='/sound-library/help.html'">Help</div>
-        </div>
+    <div class="sidebar-item active" id="navHome" onclick="goHome()">🏠 Home</div>
+    <div class="sidebar-item" onclick="goRandom()">🎲 Random Sound</div>
+    <hr style="width: 100%; border: 0.5px solid var(--border-color); margin: 8px 0;">
+    <div class="sidebar-item" id="navPlaylists" onclick="goPlaylists()">📋 Playlists</div>
+    <div class="sidebar-item" id="navFavs" onclick="goFavorites()">❤️ Favorites</div>
+    <div class="sidebar-item" onclick="window.location.href='/sound-library/help.html'">Help</div>
+</div>
 
-        <div class="content" id="mainContent"></div>
+        <div class="content" id="mainContent">
+            </div>
     </div>
 
     <script>
         // --- CONSTANTS & CONFIG ---
-        // Complete expanded character set (Base62 + 21 special characters = 83 total slots)
-        const CHARSET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ~!@#$%^&*()-_=+,<.>/?";
-        const BLOCK_SIZE = CHARSET.length; // 83 pitch slots per frame block
-        const MAX_VOL_CHAR = '?'; // Index 82 corresponds to 100% normal max volume
-        const FRAME_DURATION = 0.1; // 0.1 seconds per frame block
+        const BASE62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const FREQS = [130.81, 196.00, 261.63, 392.00, 523.25, 783.99]; // 6 Robotic Synthesizer Notes
+        const FRAME_DURATION = 0.1; // 0.1 seconds per character
         let config = { defaultName: "SLOB", defaultDescription: "Another sound from the Sound Library Of Babel(SLOB)" };
         let nicknames = {};
 
@@ -229,220 +228,225 @@
         });
 
         // --- URL ROUTING HELPER ---
-        function setURL(queryString) {
-            const url = new URL(window.location.href);
-            url.search = queryString;
-            window.history.pushState({}, '', url.toString());
-        }
-
+        // Safely updates the URL without removing the subdirectory structure you are hosted in
+        // --- URL ROUTING HELPER ---
+function setURL(queryString) {
+    const url = new URL(window.location.href);
+    url.search = queryString; // Only changes the ? variables, keeps subfolders intact
+    window.history.pushState({}, '', url.toString());
+}
         async function afterInitDB() {
             await initDB();
             checkSavedLogin();
         }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            afterInitDB();
-        });
-
-        // --- AUDIO MATH, ID OVERHAUL & DECODING ---
+window.addEventListener('DOMContentLoaded', () => {
+    afterInitDB();
+});
+        // --- AUDIO MATH & DECODING ---
         function sanitizeId(input) {
-            if (!input) return "0".repeat(BLOCK_SIZE);
+    if (!input) input = "0";
+    
+    // Remove invalid characters, keeping only alphanumeric
+    let cleanInput = input.replace(/[^a-zA-Z0-9]/g, '');
+    if (cleanInput.length === 0) cleanInput = "0";
 
-            // Handle custom volume search bar syntax: pitch:vol|pitch:vol or pitch|pitch
-            if (input.includes('|') || input.includes(':')) {
-                let frames = input.split('|');
-                let finalId = "";
+    // Determine how many 62-character blocks (frames) are needed
+    // Each block can hold up to 61 unique active character slots (index 0 is reserved)
+    let blocksCount = Math.ceil(cleanInput.length / 61);
+    let finalId = "";
 
-                for (let f = 0; f < frames.length; f++) {
-                    let frameStr = frames[f].trim();
-                    if (!frameStr) continue;
-                    let blockArr = new Array(BLOCK_SIZE).fill('0');
-
-                    // Allow comma/space-separated pitch descriptors per frame block
-                    let parts = frameStr.split(/[\s,]+/);
-                    let isShortcut = false;
-
-                    for (let part of parts) {
-                        if (!part) continue;
-                        let pChar = "", vChar = MAX_VOL_CHAR;
-
-                        if (part.includes(':')) {
-                            let [p, v] = part.split(':');
-                            pChar = p.trim();
-                            v = v.trim();
-                            if (CHARSET.includes(v)) {
-                                vChar = v;
-                            } else if (!isNaN(v)) {
-                                let num = Math.min(100, Math.max(0, parseFloat(v)));
-                                let idx = Math.round((num / 100) * (BLOCK_SIZE - 1));
-                                vChar = CHARSET[idx] || MAX_VOL_CHAR;
-                            }
-                            isShortcut = true;
-                        } else if (CHARSET.includes(part)) {
-                            pChar = part;
-                            vChar = MAX_VOL_CHAR; // Default to max volume '?'
-                            isShortcut = true;
-                        }
-
-                        if (isShortcut && pChar) {
-                            let pIdx = CHARSET.indexOf(pChar);
-                            if (pIdx !== -1) {
-                                blockArr[pIdx] = vChar; // Set specified pitch position to volume character
-                            }
-                        }
-                    }
-
-                    if (!isShortcut) {
-                        // Raw block chunk for this frame segment
-                        let cleanChunk = frameStr.replace(/[^0-9a-zA-Z~!@#$%^&*()\-_\=+\,\<\.\>\/\?]/g, '');
-                        for (let i = 0; i < Math.min(cleanChunk.length, BLOCK_SIZE); i++) {
-                            blockArr[i] = cleanChunk[i];
-                        }
-                    }
-                    finalId += blockArr.join('');
-                }
-                return finalId || "0".repeat(BLOCK_SIZE);
+    for (let b = 0; b < blocksCount; b++) {
+        // Initialize a 62-character block filled with '0's
+        let blockArr = new Array(62).fill('0');
+        
+        // Grab the chunk of text for this specific frame block
+        let chunk = cleanInput.substr(b * 61, 61);
+        
+        for (let i = 0; i < chunk.length; i++) {
+            let char = chunk[i];
+            let baseIndex = BASE62.indexOf(char);
+            
+            if (baseIndex > 0) {
+                // Place the character at its exact BASE62 index position
+                blockArr[baseIndex] = char;
+            } else if (baseIndex === 0) {
+                blockArr[0] = '0';
+            } else {
+                // Fallback for any edge cases
+                let fallbackIndex = (char.charCodeAt(0) % 61) + 1;
+                blockArr[fallbackIndex] = char;
             }
+        }
+        
+        // Append this completed 62-character block to the final ID string
+        finalId += blockArr.join('');
+    }
 
-            // Standard stream sanitization: sanitize into chunks of BLOCK_SIZE (83)
-            let cleanInput = input.replace(/[^0-9a-zA-Z~!@#$%^&*()\-_\=+\,\<\.\>\/\?]/g, '');
-            if (cleanInput.length === 0) return "0".repeat(BLOCK_SIZE);
+    // Ensure final length is a clean multiple of 62
+    let remainder = finalId.length % 62;
+    if (remainder !== 0) {
+        finalId = finalId.padEnd(finalId.length + (62 - remainder), '0');
+    }
 
-            let blocksCount = Math.ceil(cleanInput.length / BLOCK_SIZE);
-            let finalId = "";
-
-            for (let b = 0; b < blocksCount; b++) {
-                let chunk = cleanInput.substr(b * BLOCK_SIZE, BLOCK_SIZE);
-                let blockArr = chunk.split('');
-                while (blockArr.length < BLOCK_SIZE) blockArr.push('0');
-                finalId += blockArr.join('');
-            }
-
-            return finalId;
+    return finalId;
+}
+        function charToBinary(char) {
+            let idx = BASE62.indexOf(char);
+            if(idx === -1) idx = 0; 
+            return idx; 
         }
 
         function mutateId(id) {
             let arr = id.split('');
             let idx = Math.floor(Math.random() * arr.length);
-            let charIdx = Math.floor(Math.random() * CHARSET.length);
-            arr[idx] = CHARSET[charIdx];
+            let charIdx = BASE62.indexOf(arr[idx]);
+            charIdx = (charIdx + (Math.floor(Math.random() * 10) + 1)) % 62;
+            arr[idx] = BASE62[charIdx];
             return sanitizeId(arr.join(''));
         }
 
-        function generateRandomId(targetFrames = null) {
-            let frames = targetFrames || (Math.floor(Math.random() * 300) + 10);
-            let id = "";
-            for (let i = 0; i < frames; i++) {
-                for (let j = 0; j < BLOCK_SIZE; j++) {
-                    // ~15% chance for a pitch to be active with a random volume
-                    if (Math.random() > 0.15) {
-                        id += "0";
-                    } else {
-                        let randVolIdx = Math.floor(Math.random() * (CHARSET.length - 1)) + 1;
-                        id += CHARSET[randVolIdx];
-                    }
-                }
+       function generateRandomId(targetFrames = null) {
+    // If no target given (like in recommendations), generate a varied mix of lengths
+    let frames = targetFrames;
+    if (!frames) {
+        frames = Math.floor(Math.random() * 3000) + 1;
+    }
+    console.log(frames)
+    let id = "";
+    for (let i = 0; i < frames; i++) {
+        for (let j = 0; j < 62; j++) {
+            // 15% chance for a pitch to be active so it sounds like music/signals and not pure static
+            if (j === 0 || Math.random() > 0.15) {
+                id += "0";
+            } else {
+                id += BASE62[j]; // Places the specific character at its specific pitch index
             }
-            return sanitizeId(id);
         }
+    }
+    return sanitizeId(id);
+}
 
         function getTitle(id) {
-            if (!id) return config.defaultName + ": Unknown";
-            
-            if (typeof nicknames === 'undefined' || !nicknames) {
-                let name = config.defaultName + ": " + id;
-                return name.length > 100 ? name.substring(0, 100) + "..." : name;
-            }
+    if (!id) return config.defaultName + ": Unknown";
+    
+    // Ensure nicknames object exists
+    if (typeof nicknames === 'undefined' || !nicknames) {
+        let name = config.defaultName + ": " + id;
+        return name.length > 100 ? name.substring(0, 100) + "..." : name;
+    }
 
-            if (nicknames[id]) {
-                return nicknames[id];
-            }
+    // 1. Direct match (if the full ID is the key in nicknames)
+    if (nicknames[id]) {
+        return nicknames[id];
+    }
 
-            for (const [key, title] of Object.entries(nicknames)) {
-                if (sanitizeId(key) === id) {
-                    return title;
-                }
-            }
-
-            let name = config.defaultName + ": " + id;
-            if (name.length > 100) name = name.substring(0, 100) + "...";
-            return name;
+    // 2. Reverse check: see if any nickname key's sanitized version matches this ID
+    for (const [key, title] of Object.entries(nicknames)) {
+        if (sanitizeId(key) === id) {
+            return title;
         }
+    }
+
+    // 3. Fallback to default name formatting
+    let name = config.defaultName + ": " + id;
+    if (name.length > 100) name = name.substring(0, 100) + "...";
+    return name;
+}
 
         function formatTime(seconds) {
             const m = Math.floor(seconds / 60);
             const s = Math.floor(seconds % 60).toString().padStart(2, '0');
             return `${m}:${s}`;
         }
-
         async function loadNicknames() {
-            try {
-                const response = await fetch('nicknames.json');
-                if (!response.ok) throw new Error('Network response was not ok');
-                nicknames = await response.json();
-            } catch (error) {
-                console.error("Failed to load nicknames:", error);
-                nicknames = {};
-            }
-        }
-
-        async function handleLogin() {
-            const user = document.getElementById('usernameInput').value.trim();
-            if(!user) return;
-            currentUser = user;
-            userData = await loadUser(user);
-            
-            if(!userData.playlists) userData.playlists = [];
-            
-            document.getElementById('avatarBtn').innerText = user[0].toUpperCase();
-            document.getElementById('menuAvatar').innerText = user[0].toUpperCase();
-            document.getElementById('menuUsername').innerText = user;
-            document.getElementById('loginOverlay').classList.add('hidden');
-            applyTheme(userData.theme);
-
-            localStorage.setItem('babelUsername', user);
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const sharedVideoId = urlParams.get('v');
-            if (sharedVideoId) {
-                goWatch(sharedVideoId);
-            } else {
-                goHome();
-            }
-        }
-
-        async function checkSavedLogin() {
-            const savedUser = localStorage.getItem('babelUsername');
-            if (savedUser) {
-                document.getElementById('usernameInput').value = savedUser;
-                document.getElementById('loginOverlay').classList.add('hidden');
-                await handleLogin();
-            } else document.getElementById('loginOverlay').classList.remove('hidden');
-        }
-
-        function handleLogout() {
-            currentUser = null;
-            localStorage.removeItem('babelUsername');
-            document.getElementById('loginOverlay').classList.remove('hidden');
-            document.getElementById('accountMenu').classList.add('hidden');
-            stopAudio();
-        }
-
-        function toggleAccountMenu() { document.getElementById('accountMenu').classList.toggle('hidden'); }
+    try {
+        // 1. Wait for the fetch request to complete
+        const response = await fetch('nicknames.json');
         
+        // Optional: Check if the file loaded successfully
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        // 2. Wait for the body text to be parsed into a JSON object
+        nicknames = await response.json();
+        
+        console.log("Nicknames loaded successfully:", nicknames);
+    } catch (error) {
+        console.error("Failed to load nicknames:", error);
+        nicknames = {}; // Fallback empty object
+    }
+}
+        async function handleLogin() {
+    const user = document.getElementById('usernameInput').value.trim();
+    if(!user) return;
+    currentUser = user;
+    userData = await loadUser(user);
+    
+    // Validate missing structures for older DB users
+    if(!userData.playlists) userData.playlists = [];
+    
+    document.getElementById('avatarBtn').innerText = user[0].toUpperCase();
+    document.getElementById('menuAvatar').innerText = user[0].toUpperCase();
+    document.getElementById('menuUsername').innerText = user;
+    document.getElementById('loginOverlay').classList.add('hidden');
+    applyTheme(userData.theme);
+
+    // FIX: Remember the user for next time
+    localStorage.setItem('babelUsername', user);
+    console.log(user)
+
+    // FIX: Check if they clicked a shared link, otherwise go home
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedVideoId = urlParams.get('v');
+    if (sharedVideoId) {
+        goWatch(sharedVideoId);
+    } else {
+        goHome();
+    }
+}
+async function checkSavedLogin() {
+    const savedUser = localStorage.getItem('babelUsername');
+    console.log(savedUser)
+    if (savedUser) {
+        console.log("Loaded User:")
+        console.log(savedUser)
+        document.getElementById('usernameInput').value = savedUser;
+        document.getElementById('loginOverlay').classList.add('hidden');
+        await handleLogin();
+    } else document.getElementById('loginOverlay').classList.remove('hidden');
+}
+function handleLogout() {
+    currentUser = null;
+    // FIX: Forget the user on logout
+    localStorage.removeItem('babelUsername');
+    
+    document.getElementById('loginOverlay').classList.remove('hidden');
+    document.getElementById('accountMenu').classList.add('hidden');
+    stopAudio();
+}
+
+// Add this to your window.onload or initialization code to trigger the auto-login:
+async function checkSavedLogin() {
+    const savedUser = localStorage.getItem('babelUsername');
+    if (savedUser) {
+        document.getElementById('usernameInput').value = savedUser;
+        await handleLogin();
+    }
+}
+        function toggleAccountMenu() { document.getElementById('accountMenu').classList.toggle('hidden'); }
         async function toggleTheme() {
             userData.theme = userData.theme === 'dark' ? 'light' : 'dark';
             applyTheme(userData.theme);
             await saveUser();
         }
-
         function applyTheme(theme) { 
-            document.documentElement.setAttribute('data-theme', theme);
-            const themeText = document.getElementById('themeMenuText');
-            if(themeText) {
-                themeText.innerText = `🌓 Appearance: ${theme.charAt(0).toUpperCase() + theme.slice(1)} theme`;
-            }
-        }
+    document.documentElement.setAttribute('data-theme', theme);
+    const themeText = document.getElementById('themeMenuText');
+    if(themeText) {
+        themeText.innerText = `🌓 Appearance: ${theme.charAt(0).toUpperCase() + theme.slice(1)} theme`;
+    }
+}
 
         // --- NAVIGATION & VIEWS ---
         function clearNav() {
@@ -454,47 +458,68 @@
             goWatch(generateRandomId());
         }
 
+        // View 1: Home (Recommendations only, button at the bottom)
         function goHome() {
-            clearNav();
-            document.getElementById('navHome').classList.add('active');
-            setURL('');
-            
-            let html = `
-                <h2 class="section-title">Recommendations</h2>
-                <div class="grid" id="homeRecs"></div>
-                
-                <h2 class="section-title" style="margin-top: 32px;">Nicknamed Sounds</h2>
-                <div class="grid" id="homeNicknames"></div>
-                
-                <button class="refresh-btn" onclick="refreshRecs()">Refresh Recommendations</button>
-            `;
-            document.getElementById('mainContent').innerHTML = html;
-            refreshRecs();
-        }
+    clearNav();
+    document.getElementById('navHome').classList.add('active');
+    setURL('');
+    
+    let html = `
+        <h2 class="section-title">Recommendations</h2>
+        <div class="grid" id="homeRecs"></div>
+        
+        <h2 class="section-title" style="margin-top: 32px;">Nicknamed Sounds</h2>
+        <div class="grid" id="homeNicknames"></div>
+        
+        <button class="refresh-btn" onclick="refreshRecs()">Refresh Recommendations</button>
+    `;
+    document.getElementById('mainContent').innerHTML = html;
+    
+    refreshRecs();
+
+    // Populate nicknames (randomly pick up to 3)
+    const nickContainer = document.getElementById('homeNicknames');
+    let nickKeys = Object.keys(nicknames);
+    
+    if(nickKeys.length === 0) {
+        nickContainer.innerHTML = '<p style="color:var(--text-secondary); grid-column: 1/-1;">No nicknamed sounds found in nicknames.json.</p>'; // genuinely why is this here xd
+    } else {
+        // Shuffle the keys and take the first 3
+        nickKeys.sort(() => 0.5 - Math.random());
+        const selectedNicks = nickKeys.slice(0, 3);
+        
+        selectedNicks.forEach(id => nickContainer.appendChild(createCard(id)));
+    }
+        refreshRecs();
+}
 
         function refreshRecs() {
-            const container = document.getElementById('homeRecs');
-            if(container) {
-                container.innerHTML = '';
-                for(let i = 0; i < 12; i++) {
-                    container.appendChild(createCard(generateRandomId()));
-                }
-            }
-
-            const nickContainer = document.getElementById('homeNicknames');
-            if(nickContainer) {
-                nickContainer.innerHTML = '';
-                const nickKeys = Object.keys(nicknames);
-                if(nickKeys.length === 0) {
-                    nickContainer.innerHTML = '<p style="color:var(--text-secondary); grid-column: 1/-1;">No nicknamed sounds found.</p>';
-                } else {
-                    const shuffled = [...nickKeys].sort(() => 0.5 - Math.random());
-                    const selected = shuffled.slice(0, 3);
-                    selected.forEach(id => nickContainer.appendChild(createCard(id)));
-                }
-            }
+    // 1. Refresh regular recommendations
+    const container = document.getElementById('homeRecs');
+    if(container) {
+        container.innerHTML = '';
+        // Generate 12 varied sizes
+        for(let i = 0; i < 12; i++) {
+            container.appendChild(createCard(generateRandomId()));
         }
+    }
 
+    // 2. Refresh Nicknamed Sounds (pick 3 random ones)
+    const nickContainer = document.getElementById('homeNicknames');
+    if(nickContainer) {
+        nickContainer.innerHTML = '';
+        const nickKeys = Object.keys(nicknames);
+        if(nickKeys.length === 0) {
+            nickContainer.innerHTML = '<p style="color:var(--text-secondary); grid-column: 1/-1;">No nicknamed sounds found. Try the "Refresh Recommendations" button.</p>';
+        } else {
+            const shuffled = [...nickKeys].sort(() => 0.5 - Math.random());
+            const selected = shuffled.slice(0, 3);
+            selected.forEach(id => nickContainer.appendChild(createCard(id)));
+        }
+    }
+}
+
+        // View 2: Favorites
         function goFavorites() {
             clearNav();
             document.getElementById('navFavs').classList.add('active');
@@ -511,6 +536,7 @@
             }
         }
 
+        // View 3: Playlists (Generated Groups & Yours)
         function goPlaylists() {
             clearNav();
             document.getElementById('navPlaylists').classList.add('active');
@@ -528,41 +554,51 @@
             switchPlaylistTab('generated');
         }
 
-        function switchPlaylistTab(tab) {
-            document.getElementById('tabGenerated').classList.remove('active');
-            document.getElementById('tabYour').classList.remove('active');
-            document.getElementById(tab === 'generated' ? 'tabGenerated' : 'tabYour').classList.add('active');
-            
-            const container = document.getElementById('playlistContainer');
-            container.innerHTML = '';
+function switchPlaylistTab(tab) {
+    document.getElementById('tabGenerated').classList.remove('active');
+    document.getElementById('tabYour').classList.remove('active');
+    document.getElementById(tab === 'generated' ? 'tabGenerated' : 'tabYour').classList.add('active');
+    
+    const container = document.getElementById('playlistContainer');
+    container.innerHTML = '';
 
-            if (tab === 'your') {
-                if (!userData || !userData.playlists || userData.playlists.length === 0) {
-                    container.innerHTML = `<p style="color:var(--text-secondary); grid-column: 1/-1;">You haven't created any playlists.</p>`;
-                } else {
-                    userData.playlists.forEach((p, idx) => container.appendChild(createPlaylistCard(p, idx)));
-                }
-            } else {
-                const nickKeys = (typeof nicknames !== 'undefined' && nicknames) ? Object.keys(nicknames) : [];
-                const nicknamedPlaylist = { name: "Nicknamed Sounds", items: nickKeys };
-                container.appendChild(createPlaylistCard(nicknamedPlaylist, -1));
-
-                for (let g = 0; g < 8; g++) {
-                    let prefixLen = Math.floor(Math.random() * 5) + 1;
-                    let prefix = "";
-                    for (let c = 0; c < prefixLen; c++) {
-                        prefix += CHARSET[Math.floor(Math.random() * CHARSET.length)];
-                    }
-                    
-                    const pl = { name: `Some ${prefix} Signals`, items: [] };
-                    const count = Math.floor(Math.random() * 5) + 3; 
-                    for(let i = 0; i < count; i++) {
-                        pl.items.push(sanitizeId(prefix + generateRandomId(Math.floor(Math.random()*40)+10)));
-                    }
-                    container.appendChild(createPlaylistCard(pl, -1));
-                }
-            }
+    if (tab === 'your') {
+        if (!userData || !userData.playlists || userData.playlists.length === 0) {
+            container.innerHTML = `<p style="color:var(--text-secondary); grid-column: 1/-1;">You haven't created any playlists.</p>`;
+        } else {
+            userData.playlists.forEach((p, idx) => container.appendChild(createPlaylistCard(p, idx)));
         }
+    } else {
+        // --- 1. ALWAYS ADD NICKNAMED SOUNDS FIRST ---
+        // Grab all IDs that currently have a nickname
+        const nickKeys = (typeof nicknames !== 'undefined' && nicknames) ? Object.keys(nicknames) : [];
+        
+        const nicknamedPlaylist = { 
+            name: "Nicknamed Sounds", 
+            items: nickKeys // Includes ALL of them
+        };
+        // Append it as the very first card
+        container.appendChild(createPlaylistCard(nicknamedPlaylist, -1));
+
+
+        // --- 2. GENERATE RANDOM PLAYLISTS AFTER ---
+        // Generate 8 random groups with prefixes between 1 and 5 characters
+        for (let g = 0; g < 8; g++) {
+            let prefixLen = Math.floor(Math.random() * 5) + 1;
+            let prefix = "";
+            for (let c = 0; c < prefixLen; c++) {
+                prefix += BASE62[Math.floor(Math.random() * 62)];
+            }
+            
+            const pl = { name: `Some ${prefix} Signals`, items: [] };
+            const count = Math.floor(Math.random() * 5) + 3; 
+            for(let i = 0; i < count; i++) {
+                pl.items.push(sanitizeId(prefix + generateRandomId(Math.floor(Math.random()*40)+10)));
+            }
+            container.appendChild(createPlaylistCard(pl, -1));
+        }
+    }
+}
 
         function triggerSearch() {
             const val = document.getElementById('searchInput').value.trim();
@@ -570,20 +606,32 @@
         }
 
         function goSearch(query) {
-            clearNav();
-            setURL(`?search=${encodeURIComponent(query)}`);
-            
-            let clean = sanitizeId(query);
-            
-            let html = `<h2 class="section-title">Search Results</h2><div class="list-view">`;
-            document.getElementById('mainContent').innerHTML = html + `</div>`;
-            const container = document.querySelector('.list-view');
-            
-            container.appendChild(createCard(clean, true, "Exact Match"));
-            for(let i = 0; i < 8; i++) {
-                container.appendChild(createCard(mutateId(clean), true, "Similar Data"));
-            }
-        }
+    clearNav();
+    setURL(`?search=${encodeURIComponent(query)}`);
+    
+    // Split the query by '|' to allow multi-frame definitions (e.g., "frame1|frame2")
+    const parts = query.split('|');
+    let clean = "";
+    
+    parts.forEach(part => {
+        // Run each part through sanitizeId so it builds a proper 62-character frame block
+        clean += sanitizeId(part);
+    });
+    
+    // Fallback safety check if clean is empty
+    if (!clean) {
+        clean = sanitizeId("0");
+    }
+    
+    let html = `<h2 class="section-title">Search Results</h2><div class="list-view">`;
+    document.getElementById('mainContent').innerHTML = html + `</div>`;
+    const container = document.querySelector('.list-view');
+    
+    container.appendChild(createCard(clean, true, "Exact Match"));
+    for(let i = 0; i < 8; i++) {
+        container.appendChild(createCard(mutateId(clean), true, "Similar Data"));
+    }
+}
 
         function goPlaylistView(plDataStr) {
             clearNav();
@@ -599,60 +647,61 @@
         }
 
         function goWatch(id) {
-            clearNav();
-            id = sanitizeId(id);
-            setURL(`?v=${id}`);
-            currentSequence = id;
-            const isFav = userData.favorites.includes(id);
+    clearNav();
+    id = sanitizeId(id);
+    setURL(`?v=${id}`);
+    currentSequence = id;
+    const isFav = userData.favorites.includes(id);
 
-            let html = `
-                <div class="watch-layout">
-                    <div class="main-player-area">
-                        <div class="player-wrapper">
-                            <canvas id="visualizer"></canvas>
-                            <div class="controls">
-                                <div class="play-btn" id="playBtn" onclick="togglePlay()"></div>
-                                <div class="time-display" id="timeDisplay">0:00 / ${formatTime((id.length * FRAME_DURATION) / BLOCK_SIZE)}</div>
-                                <div class="progress-bar" id="progressBar" onclick="seekAudio(event)">
-                                    <div class="progress-fill" id="progressFill"></div>
-                                </div>
-                            </div>
+    let html = `
+        <div class="watch-layout">
+            <div class="main-player-area">
+                <div class="player-wrapper">
+                    <canvas id="visualizer"></canvas>
+                    <div class="controls">
+                        <div class="play-btn" id="playBtn" onclick="togglePlay()"></div>
+<div class="time-display" id="timeDisplay">0:00 / ${formatTime((id.length * FRAME_DURATION) / 62)}</div>
+                        <div class="progress-bar" id="progressBar" onclick="seekAudio(event)">
+                            <div class="progress-fill" id="progressFill"></div>
                         </div>
-                        <div class="video-info">
-                            <h1 class="video-title">${getTitle(id)}</h1>
-                            <div class="action-row">
-                                <button class="action-btn" id="favBtn" onclick="toggleFavorite('${id}')">
-                                    ${isFav ? '❤️ Favorites' : '🤍 Favorites'}
-                                </button>
-                                <button class="action-btn" onclick="openPlaylistModal()">➕ Playlist</button>
-                                <button class="action-btn" id="dlBtn" onclick="downloadAudio()">⬇️ Download</button>
-                            </div>
-                            <div class="description-box">
-                                <strong>ID:</strong> ${id}<br><br>
-                                ${config.defaultDescription}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="sidebar" style="border:none; width:350px;" id="upNextContainer">
-                        <h3 style="margin-top:0;">More Sounds</h3>
                     </div>
                 </div>
-            `;
-            document.getElementById('mainContent').innerHTML = html;
-            
-            const upNext = document.getElementById('upNextContainer');
-            for(let i=0; i<6; i++) {
-                let c = createCard(generateRandomId(), true);
-                upNext.appendChild(c);
-            }
+                <div class="video-info">
+                    <h1 class="video-title">${getTitle(id)}</h1>
+                    <div class="action-row">
+                        <button class="action-btn" id="favBtn" onclick="toggleFavorite('${id}')">
+                            ${isFav ? '❤️ Favorites' : '🤍 Favorites'}
+                        </button>
+                        <button class="action-btn" onclick="openPlaylistModal()">➕ Playlist</button>
+                        <button class="action-btn" id="dlBtn" onclick="downloadAudio()">⬇️ Download</button>
+                    </div>
+                    <div class="description-box">
+                        <strong>ID:</strong> ${id}<br><br>
+                        ${config.defaultDescription}
+                    </div>
+                </div>
+            </div>
+            <div class="sidebar" style="border:none; width:350px;" id="upNextContainer">
+                <h3 style="margin-top:0;">More Sounds</h3>
+            </div>
+        </div>
+    `;
+    document.getElementById('mainContent').innerHTML = html;
+    
+    const upNext = document.getElementById('upNextContainer');
+    for(let i=0; i<6; i++) {
+        let c = createCard(generateRandomId(), true);
+        upNext.appendChild(c);
+    }
 
-            visualizerCanvas = document.getElementById('visualizer');
-            visualizerCtx = visualizerCanvas.getContext('2d');
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
-            
-            drawOscilloscope(0);
-        }
+    visualizerCanvas = document.getElementById('visualizer');
+    visualizerCtx = visualizerCanvas.getContext('2d');
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    drawOscilloscope(0);
+}
+        
 
         // --- COMPONENT BUILDERS ---
         function createCard(id, isList = false, badge = "") {
@@ -670,132 +719,135 @@
                 <div style="flex:1; min-width:0;">
                     ${bHtml}
                     <h4 class="card-title">${getTitle(id)}</h4>
-                    <div style="font-size:14px; color:var(--text-secondary); margin-top:4px;">${formatTime((id.length * FRAME_DURATION)/BLOCK_SIZE)}</div>
+                    <div style="font-size:14px; color:var(--text-secondary); margin-top:4px;">${formatTime((id.length * FRAME_DURATION)/62)}</div>
                 </div>
             `;
             
             setTimeout(() => drawWaveformThumbnail(document.getElementById(canvasId), id), 0);
             return wrapper;
         }
+    // --- AUDIO EXPORT (WAV) ---
+async function downloadAudio() {
+    if(!currentSequence) return;
+    const btn = document.getElementById('dlBtn');
+    btn.innerText = "⏳ Generating...";
+    btn.disabled = true;
 
-        // --- AUDIO EXPORT (WAV) ---
-        async function downloadAudio() {
-            if(!currentSequence) return;
-            const btn = document.getElementById('dlBtn');
-            btn.innerText = "⏳ Generating...";
-            btn.disabled = true;
+    try {
+        const totalFrames = Math.floor(currentSequence.length / 62);
+        const duration = totalFrames * FRAME_DURATION;
+        const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100 * duration, 44100);
 
-            try {
-                const totalFrames = Math.floor(currentSequence.length / BLOCK_SIZE);
-                const duration = totalFrames * FRAME_DURATION;
-                const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100 * duration, 44100);
-
-                for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
-                    const blockStart = frameIdx * BLOCK_SIZE;
-                    const blockEnd = blockStart + BLOCK_SIZE;
-                    const block = currentSequence.substring(blockStart, blockEnd);
-                    
-                    if (!block || block.length < BLOCK_SIZE) continue;
-
-                    const time = frameIdx * FRAME_DURATION;
-                    const pitches = [];
-
-                    for (let i = 0; i < BLOCK_SIZE; i++) {
-                        let char = block[i];
-                        let volIdx = CHARSET.indexOf(char);
-                        if (volIdx > 0) {
-                            let volRatio = volIdx / (CHARSET.length - 1);
-                            pitches.push({ index: i, volRatio: volRatio });
-                        }
-                    }
-
-                    if (pitches.length === 0) continue;
-                    const baseVolume = 0.5 / Math.max(1, pitches.length);
-
-                    pitches.forEach(p => {
-                        const freq = 200 + ((p.index / (BLOCK_SIZE - 1)) * 3800);
-                        const osc = offlineCtx.createOscillator();
-                        const gain = offlineCtx.createGain();
-                        const pitchGain = baseVolume * p.volRatio;
-                        
-                        osc.type = 'sine';
-                        osc.frequency.value = freq;
-
-                        gain.gain.setValueAtTime(0, time);
-                        gain.gain.linearRampToValueAtTime(pitchGain, time + 0.005);
-                        gain.gain.setValueAtTime(pitchGain, time + FRAME_DURATION - 0.005);
-                        gain.gain.linearRampToValueAtTime(0, time + FRAME_DURATION);
-
-                        osc.connect(gain);
-                        gain.connect(offlineCtx.destination);
-                        
-                        osc.start(time);
-                        osc.stop(time + FRAME_DURATION);
-                    });
-                }
-
-                const renderedBuffer = await offlineCtx.startRendering();
-                const wavData = audioBufferToWav(renderedBuffer);
-                const blob = new Blob([new DataView(wavData)], { type: 'audio/wav' });
-                
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = `Signal_${currentSequence.substring(0, 10)}.wav`;
-                document.body.appendChild(a);
-                a.click();
-                URL.revokeObjectURL(url);
-            } catch(e) {
-                console.error(e);
-                alert("Audio generation failed on this device.");
-            }
+        // Process vertically (per pitch track) instead of frame-by-frame
+        for (let i = 1; i < 62; i++) {
+            let startFrame = -1;
             
-            btn.innerText = "⬇️ Download";
-            btn.disabled = false;
-        }
+            for (let frameIdx = 0; frameIdx <= totalFrames; frameIdx++) {
+                // If we reach the end, force a '0' to stop any active notes
+                const charAt = frameIdx < totalFrames ? currentSequence[frameIdx * 62 + i] : '0';
+                const isActive = (charAt !== '0' && charAt === BASE62[i]);
 
-        function audioBufferToWav(buffer) {
-            let numOfChan = buffer.numberOfChannels,
-                length = buffer.length * numOfChan * 2 + 44,
-                bufferArray = new ArrayBuffer(length),
-                view = new DataView(bufferArray),
-                channels = [], i, sample,
-                offset = 0,
-                pos = 0;
+                if (isActive && startFrame === -1) {
+                    // Note begins
+                    startFrame = frameIdx;
+                } else if (!isActive && startFrame !== -1) {
+                    // Note ends, calculate length and schedule it
+                    const durationFrames = frameIdx - startFrame;
+                    const startTime = startFrame * FRAME_DURATION;
+                    const durationInSecs = durationFrames * FRAME_DURATION;
+                    
+                    // Balance volume based on how many notes play at its start frame
+                    let activeAtStart = 0;
+                    for(let j = 1; j < 62; j++) {
+                        if(currentSequence[startFrame * 62 + j] === BASE62[j]) activeAtStart++;
+                    }
+                    const volumePerPitch = 0.5 / Math.max(1, activeAtStart);
+                    const freq = 200 + ((i / 61) * 3800);
 
-            function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
-            function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+                    const osc = offlineCtx.createOscillator();
+                    const gain = offlineCtx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
 
-            setUint32(0x46464952); // "RIFF"
-            setUint32(length - 8); 
-            setUint32(0x45564157); // "WAVE"
-            setUint32(0x20746d66); // "fmt " chunk
-            setUint32(16); 
-            setUint16(1); 
-            setUint16(numOfChan);
-            setUint32(buffer.sampleRate);
-            setUint32(buffer.sampleRate * 2 * numOfChan); 
-            setUint16(numOfChan * 2); 
-            setUint16(16); 
+                    gain.gain.setValueAtTime(0, startTime);
+                    gain.gain.linearRampToValueAtTime(volumePerPitch, startTime + 0.005);
+                    gain.gain.setValueAtTime(volumePerPitch, startTime + durationInSecs - 0.005);
+                    gain.gain.linearRampToValueAtTime(0, startTime + durationInSecs);
 
-            setUint32(0x61746164); // "data" - chunk
-            setUint32(length - pos - 4); 
+                    osc.connect(gain);
+                    gain.connect(offlineCtx.destination);
+                    
+                    osc.start(startTime);
+                    osc.stop(startTime + durationInSecs);
 
-            for(i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i));
-
-            while(pos < length) {
-                for(i = 0; i < numOfChan; i++) {
-                    sample = Math.max(-1, Math.min(1, channels[i][offset])); 
-                    sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0; 
-                    view.setInt16(pos, sample, true); 
-                    pos += 2;
+                    // Reset to look for the next time this pitch occurs
+                    startFrame = -1; 
                 }
-                offset++;
             }
-            return bufferArray;
         }
 
+        const renderedBuffer = await offlineCtx.startRendering();
+        const wavData = audioBufferToWav(renderedBuffer);
+        const blob = new Blob([new DataView(wavData)], { type: 'audio/wav' });
+        
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `Signal_${currentSequence.substring(0, 10)}.wav`;
+        document.body.appendChild(a);
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch(e) {
+        console.error(e);
+        alert("Audio generation failed on this device.");
+    }
+    
+    btn.innerText = "⬇️ Download";
+    btn.disabled = false;
+}
+
+function audioBufferToWav(buffer) {
+    let numOfChan = buffer.numberOfChannels,
+        length = buffer.length * numOfChan * 2 + 44,
+        bufferArray = new ArrayBuffer(length),
+        view = new DataView(bufferArray),
+        channels = [], i, sample,
+        offset = 0,
+        pos = 0;
+
+    function setUint16(data) { view.setUint16(pos, data, true); pos += 2; }
+    function setUint32(data) { view.setUint32(pos, data, true); pos += 4; }
+
+    setUint32(0x46464952); // "RIFF"
+    setUint32(length - 8); // file length - 8
+    setUint32(0x45564157); // "WAVE"
+    setUint32(0x20746d66); // "fmt " chunk
+    setUint32(16); // length = 16
+    setUint16(1); // PCM (uncompressed)
+    setUint16(numOfChan);
+    setUint32(buffer.sampleRate);
+    setUint32(buffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
+    setUint16(numOfChan * 2); // block-align
+    setUint16(16); // 16-bit
+
+    setUint32(0x61746164); // "data" - chunk
+    setUint32(length - pos - 4); // chunk length
+
+    for(i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i));
+
+    while(pos < length) {
+        for(i = 0; i < numOfChan; i++) {
+            sample = Math.max(-1, Math.min(1, channels[i][offset])); 
+            sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0; 
+            view.setInt16(pos, sample, true); 
+            pos += 2;
+        }
+        offset++;
+    }
+    return bufferArray;
+}
         function createPlaylistCard(pl, idx) {
             const wrapper = document.createElement('div');
             wrapper.className = 'video-card';
@@ -816,7 +868,7 @@
                 </div>
             `;
             
-            setTimeout(() => drawWaveformThumbnail(document.getElementById(canvasId), pl.items[0] || "0".repeat(BLOCK_SIZE), true), 0);
+            setTimeout(() => drawWaveformThumbnail(document.getElementById(canvasId), pl.items[0] || "0000000000", true), 0);
             return wrapper;
         }
 
@@ -827,102 +879,96 @@
             visualizerCanvas.height = visualizerCanvas.parentElement.clientHeight - 48;
         }
 
-        function drawWaveformThumbnail(canvas, id, isPlaylist = false) {
-            if(!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const w = 360, h = 202;
-            canvas.width = w; canvas.height = h;
-            
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, w, h);
-            
-            const block = id.substring(0, BLOCK_SIZE) || '0'.repeat(BLOCK_SIZE);
-            const activeFreqs = [];
-            for (let i = 0; i < BLOCK_SIZE; i++) {
-                let char = block[i];
-                let volIdx = CHARSET.indexOf(char);
-                if (volIdx > 0) {
-                    let freq = 200 + ((i / (BLOCK_SIZE - 1)) * 3800);
-                    let volRatio = volIdx / (CHARSET.length - 1);
-                    activeFreqs.push({ freq, volRatio });
-                }
-            }
-            
-            if(activeFreqs.length === 0) activeFreqs.push({ freq: 1000, volRatio: 0.5 }); 
-
-            ctx.strokeStyle = isPlaylist ? 'var(--text-secondary)' : 'var(--accent)';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            
-            for(let x=0; x<w; x++) {
-                let yOffset = 0;
-                activeFreqs.forEach(item => {
-                    yOffset += Math.sin(x * 0.05 * (item.freq / 500)) * (h / 4) * item.volRatio / activeFreqs.length;
-                });
-                if(x===0) ctx.moveTo(x, h/2 + yOffset);
-                else ctx.lineTo(x, h/2 + yOffset);
-            }
-            ctx.stroke();
-
-            if (isPlaylist) {
-                ctx.strokeStyle = '#555';
-                ctx.beginPath();
-                for(let x=0; x<w; x++) {
-                    let yOffset = 0;
-                    activeFreqs.forEach(item => {
-                        yOffset += Math.cos((x+50) * 0.05 * (item.freq / 500)) * (h / 4) * item.volRatio / activeFreqs.length;
-                    });
-                    if(x===0) ctx.moveTo(x, h/2 + yOffset + 20);
-                    else ctx.lineTo(x, h/2 + yOffset + 20);
-                }
-                ctx.stroke();
-            }
+       function drawWaveformThumbnail(canvas, id, isPlaylist = false) {
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = 360, h = 202;
+    canvas.width = w; canvas.height = h;
+    
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+    
+    // Look at the first block of the video for the thumbnail
+    const block = id.substring(0, 62) || '0'.repeat(62);
+    const activeFreqs = [];
+    for (let i = 1; i < 62; i++) {
+        if (block[i] !== '0' && block[i] === BASE62[i]) {
+            activeFreqs.push(200 + ((i / 61) * 3800));
         }
+    }
+    
+    // Fallback if the first frame is entirely silent
+    if(activeFreqs.length === 0) activeFreqs.push(1000); 
 
+    ctx.strokeStyle = isPlaylist ? 'var(--text-secondary)' : 'var(--accent)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    
+    for(let x=0; x<w; x++) {
+        let yOffset = 0;
+        activeFreqs.forEach(freq => {
+            yOffset += Math.sin(x * 0.05 * (freq / 500)) * (h / 4) / activeFreqs.length;
+        });
+        if(x===0) ctx.moveTo(x, h/2 + yOffset);
+        else ctx.lineTo(x, h/2 + yOffset);
+    }
+    ctx.stroke();
+
+    if (isPlaylist) {
+        ctx.strokeStyle = '#555';
+        ctx.beginPath();
+        for(let x=0; x<w; x++) {
+            let yOffset = 0;
+            activeFreqs.forEach(freq => {
+                yOffset += Math.cos((x+50) * 0.05 * (freq / 500)) * (h / 4) / activeFreqs.length;
+            });
+            if(x===0) ctx.moveTo(x, h/2 + yOffset + 20);
+            else ctx.lineTo(x, h/2 + yOffset + 20);
+        }
+        ctx.stroke();
+    }
+}
         function drawOscilloscope(timeOffset) {
-            if(!visualizerCanvas || !visualizerCtx) return;
-            const ctx = visualizerCtx;
-            const width = visualizerCanvas.width;
-            const height = visualizerCanvas.height;
-            if (width === 0 || height === 0) resizeCanvas();
+    if(!visualizerCanvas || !visualizerCtx) return;
+    const ctx = visualizerCtx;
+    const width = visualizerCanvas.width;
+    const height = visualizerCanvas.height;
+    if (width === 0 || height === 0) resizeCanvas();
 
-            ctx.fillStyle = 'rgba(0,0,0,0.4)';
-            ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(0, 0, width, height);
 
-            const frameIdx = Math.floor(timeOffset / FRAME_DURATION);
-            const block = currentSequence.substring(frameIdx * BLOCK_SIZE, (frameIdx + 1) * BLOCK_SIZE) || '0'.repeat(BLOCK_SIZE);
+    const frameIdx = Math.floor(timeOffset / FRAME_DURATION);
+    const block = currentSequence.substring(frameIdx * 62, (frameIdx + 1) * 62) || '0'.repeat(62);
 
-            ctx.strokeStyle = 'var(--accent)';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
+    ctx.strokeStyle = 'var(--accent)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
 
-            const activeFreqs = [];
-            for (let i = 0; i < BLOCK_SIZE; i++) {
-                let char = block[i];
-                let volIdx = CHARSET.indexOf(char);
-                if (volIdx > 0) {
-                    let freq = 200 + ((i / (BLOCK_SIZE - 1)) * 3800);
-                    let volRatio = volIdx / (CHARSET.length - 1);
-                    activeFreqs.push({ freq, volRatio });
-                }
-            }
-
-            if (activeFreqs.length === 0) {
-                ctx.moveTo(0, height/2);
-                ctx.lineTo(width, height/2);
-            } else {
-                for(let x=0; x<width; x++) {
-                    const scrollX = x + (timeOffset * 300); 
-                    let yOffset = 0;
-                    activeFreqs.forEach(item => {
-                        yOffset += Math.sin(scrollX * 0.01 * (item.freq / 500)) * (height / 3) * item.volRatio / activeFreqs.length;
-                    });
-                    if(x===0) ctx.moveTo(x, height/2 + yOffset);
-                    else ctx.lineTo(x, height/2 + yOffset);
-                }
-            }
-            ctx.stroke();
+    const activeFreqs = [];
+    for (let i = 1; i < 62; i++) {
+        if (block[i] !== '0' && block[i] === BASE62[i]) {
+            activeFreqs.push(200 + ((i / 61) * 3800));
         }
+    }
+
+    if (activeFreqs.length === 0) {
+        ctx.moveTo(0, height/2);
+        ctx.lineTo(width, height/2);
+    } else {
+        for(let x=0; x<width; x++) {
+            const scrollX = x + (timeOffset * 300); 
+            let yOffset = 0;
+            // Superposition of all active sine waves
+            activeFreqs.forEach(freq => {
+                yOffset += Math.sin(scrollX * 0.01 * (freq / 500)) * (height / 3) / activeFreqs.length;
+            });
+            if(x===0) ctx.moveTo(x, height/2 + yOffset);
+            else ctx.lineTo(x, height/2 + yOffset);
+        }
+    }
+    ctx.stroke();
+}
 
         // --- AUDIO ENGINE ---
         function togglePlay() {
@@ -955,7 +1001,7 @@
         }
 
         function scheduler() {
-            const totalFrames = Math.floor(currentSequence.length / BLOCK_SIZE);
+            const totalFrames = Math.floor(currentSequence.length / 62);
             while (nextNoteTime < audioCtx.currentTime + 0.1 && currentFrame < totalFrames) {
                 scheduleFrame(currentFrame, nextNoteTime);
                 nextNoteTime += FRAME_DURATION;
@@ -966,54 +1012,118 @@
                 updateProgressUI(totalFrames * FRAME_DURATION);
             }
         }
+    
+        // Add this helper for deterministic randomness based on the ID character
+function mulberry32(a) {
+    return function() {
+        var t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+}
 
-        function scheduleFrame(frameIdx, time) {
-            const blockStart = frameIdx * BLOCK_SIZE;
-            const blockEnd = blockStart + BLOCK_SIZE;
-            const block = currentSequence.substring(blockStart, blockEnd);
+function scheduleFrame(frameIdx, time) {
+    const blockStart = frameIdx * 62;
+    const block = currentSequence.substring(blockStart, blockStart + 62);
 
-            if (!block || block.length < BLOCK_SIZE) return; 
+    if (!block || block.length < 62) return; 
 
-            const pitches = [];
+    // Determine if we just skipped/seeked to this frame, or if it's playing continuously
+    const isFirstFrameAfterSeek = (frameIdx === Math.floor(seekTime / FRAME_DURATION));
+    const prevBlock = (frameIdx > 0 && !isFirstFrameAfterSeek) 
+        ? currentSequence.substring((frameIdx - 1) * 62, frameIdx * 62) 
+        : null;
 
-            for (let i = 0; i < BLOCK_SIZE; i++) {
-                let char = block[i];
-                let volIdx = CHARSET.indexOf(char);
-                if (volIdx > 0) {
-                    let volRatio = volIdx / (CHARSET.length - 1);
-                    pitches.push({ index: i, volRatio: volRatio });
+    const totalFrames = Math.floor(currentSequence.length / 62);
+
+    // Count active pitches in THIS frame to balance volume
+    let activePitches = 0;
+    for (let i = 1; i < 62; i++) {
+        if (block[i] !== '0' && block[i] === BASE62[i]) activePitches++;
+    }
+    if (activePitches === 0) return;
+
+    const volumePerPitch = 0.5 / Math.max(1, activePitches);
+
+    for (let i = 1; i < 62; i++) {
+        const isActive = (block[i] !== '0' && block[i] === BASE62[i]);
+        const wasActive = prevBlock ? (prevBlock[i] !== '0' && prevBlock[i] === BASE62[i]) : false;
+
+        // ONLY trigger the oscillator if the note just started
+        if (isActive && !wasActive) {
+            let durationFrames = 1;
+            
+            // Look ahead to see exactly how many frames this pitch stays on
+            for (let f = frameIdx + 1; f < totalFrames; f++) {
+                const nextChar = currentSequence[f * 62 + i];
+                if (nextChar !== '0' && nextChar === BASE62[i]) {
+                    durationFrames++;
+                } else {
+                    break;
                 }
             }
 
-            if (pitches.length === 0) return;
+            const durationInSecs = durationFrames * FRAME_DURATION;
+            const freq = 200 + ((i / 61) * 3800);
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine'; 
+            osc.frequency.value = freq;
+            
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(volumePerPitch, time + 0.005);
+            gain.gain.setValueAtTime(volumePerPitch, time + durationInSecs - 0.005);
+            gain.gain.linearRampToValueAtTime(0, time + durationInSecs);
 
-            const baseVolume = 0.5 / Math.max(1, pitches.length);
-
-            pitches.forEach(p => {
-                const freq = 200 + ((p.index / (BLOCK_SIZE - 1)) * 3800);
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                const pitchGain = baseVolume * p.volRatio;
-                
-                osc.type = 'sine'; 
-                osc.frequency.value = freq;
-                
-                gain.gain.setValueAtTime(0, time);
-                gain.gain.linearRampToValueAtTime(pitchGain, time + 0.005);
-                gain.gain.setValueAtTime(pitchGain, time + FRAME_DURATION - 0.005);
-                gain.gain.linearRampToValueAtTime(0, time + FRAME_DURATION);
-
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                
-                osc.start(time);
-                osc.stop(time + FRAME_DURATION);
-                currentOscillators.push(osc);
-            });
-
-            currentOscillators = currentOscillators.filter(osc => osc.context.currentTime < time + FRAME_DURATION + 1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start(time);
+            osc.stop(time + durationInSecs);
+            currentOscillators.push(osc);
         }
+    }
 
+    // Cleanup stale oscillators from memory
+    currentOscillators = currentOscillators.filter(osc => osc.context.currentTime < time + 5);
+}
+// Replace drawOscilloscope
+function drawOscilloscope(timeOffset) {
+    if(!visualizerCanvas || !visualizerCtx) return;
+    const ctx = visualizerCtx;
+    const width = visualizerCanvas.width;
+    const height = visualizerCanvas.height;
+
+    if (width === 0 || height === 0) resizeCanvas();
+
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(0, 0, width, height);
+
+    const frameIdx = Math.floor(timeOffset / FRAME_DURATION);
+    const char = currentSequence.charAt(frameIdx) || '0';
+    const val = charToBinary(char);
+
+    ctx.strokeStyle = 'var(--accent)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    if (val === 0) {
+        ctx.moveTo(0, height/2);
+        ctx.lineTo(width, height/2);
+    } else {
+        const freq = 200 + ((val / 61) * 3800);
+        for(let x=0; x<width; x++) {
+            const scrollX = x + (timeOffset * 300); 
+            const yOffset = Math.sin(scrollX * 0.01 * (freq / 500)) * (height / 3);
+            if(x===0) ctx.moveTo(x, height/2 + yOffset);
+            else ctx.lineTo(x, height/2 + yOffset);
+        }
+    }
+    ctx.stroke();
+}
         function animateVisualizer() {
             if(!isPlaying) return;
             const elapsedTime = seekTime + (audioCtx.currentTime - (nextNoteTime - (currentFrame * FRAME_DURATION) + seekTime)); 
@@ -1030,7 +1140,7 @@
             const pFill = document.getElementById('progressFill');
             if(!tDisp || !pFill) return;
             
-            const total = (currentSequence.length / BLOCK_SIZE) * FRAME_DURATION;
+            const total = (currentSequence.length / 62) * FRAME_DURATION;
             const safeTime = Math.min(time, total);
             tDisp.innerText = `${formatTime(safeTime)} / ${formatTime(total)}`;
             pFill.style.width = `${(safeTime / total) * 100}%`;
@@ -1042,7 +1152,7 @@
             const rect = bar.getBoundingClientRect();
             const percent = (e.clientX - rect.left) / rect.width;
             
-            const total = (currentSequence.length / BLOCK_SIZE) * FRAME_DURATION;
+            const total = (currentSequence.length / 62) * FRAME_DURATION;
             seekTime = percent * total;
             
             if(isPlaying) {
@@ -1071,7 +1181,6 @@
             if(userData.playlists.length === 0) select.innerHTML = '<option disabled>No playlists available</option>';
             modal.classList.remove('hidden');
         }
-        
         function closePlaylistModal() { document.getElementById('playlistModal').classList.add('hidden'); }
         
         async function saveToPlaylist() {
@@ -1100,16 +1209,19 @@
 
         // --- INIT ---
         async function init() {
+            //try { const res = await fetch('config.json'); if(res.ok) config = {...config, ...(await res.json())}; } catch(e){}
             try { const res = await fetch('nicknames.json'); if(res.ok) nicknames = await res.json(); } catch(e){}
 
             await initDB();
 
             const urlParams = new URLSearchParams(window.location.search);
             
+            // Check params or default to overlay if no user
             if(urlParams.get('v')) goWatch(urlParams.get('v'));
             else if(urlParams.get('search')) goSearch(urlParams.get('search'));
             else if(urlParams.get('view') === 'playlists') goPlaylists();
             else if(urlParams.get('view') === 'favorites') goFavorites();
+            //else document.getElementById('loginOverlay').classList.remove('hidden'); 
             
             window.addEventListener('popstate', () => {
                 const params = new URLSearchParams(window.location.search);
@@ -1120,30 +1232,11 @@
                 else goHome();
             });
         }
-
         window.onload = init;
-
-        // Attach global window hooks
-        window.handleLogin = handleLogin;
-        window.handleLogout = handleLogout;
-        window.checkSavedLogin = checkSavedLogin;
-        window.toggleAccountMenu = toggleAccountMenu;
-        window.toggleTheme = toggleTheme;
-        window.goHome = goHome;
-        window.goRandom = goRandom;
-        window.goPlaylists = goPlaylists;
-        window.goFavorites = goFavorites;
-        window.switchPlaylistTab = switchPlaylistTab;
-        window.triggerSearch = triggerSearch;
-        window.togglePlay = togglePlay;
-        window.seekAudio = seekAudio;
-        window.toggleFavorite = toggleFavorite;
-        window.openPlaylistModal = openPlaylistModal;
-        window.closePlaylistModal = closePlaylistModal;
-        window.saveToPlaylist = saveToPlaylist;
-        window.createNewPlaylist = createNewPlaylist;
-        window.downloadAudio = downloadAudio;
-        window.refreshRecs = refreshRecs;
+        // Attach functions to the global window object so HTML onclick attributes can access them
+window.handleLogin = handleLogin;
+window.handleLogout = handleLogout;
+window.checkSavedLogin = checkSavedLogin;
     </script>
 </body>
 </html>
