@@ -246,37 +246,56 @@
 
         // --- AUDIO MATH & DECODING (UNIFIED TO 83 SLOTS) ---
         function sanitizeId(input) {
-            if (!input) return '0'.repeat(FRAME_SIZE);
-            
-            // Check if it's already a valid raw ID string (multiple of 83)
-            if (!input.includes('|') && !input.includes(':') && input.length > 0 && input.length % FRAME_SIZE === 0) {
-                let isValidRaw = [...input].every(c => VOL_CHARS.includes(c));
-                if (isValidRaw) return input;
-            }
-
-            const parts = input.split('|');
-            let finalId = "";
-            
-            parts.forEach(part => {
-                let frameArr = new Array(FRAME_SIZE).fill('0');
-                // Escaped regex matching all 83 pitch characters
-                let regex = /([1-9a-zA-Z`~!@#$%^&*()_\-=\+,\.<>\/?])(?:[:](.))?/g;
-                let match;
-                while ((match = regex.exec(part)) !== null) {
-                    let pitchChar = match[1];
-                    let volChar = match[2] || '?'; // Default to max volume ('?')
-                    
-                    let pitchIndex = PITCH_CHARS.indexOf(pitchChar);
-                    if (pitchIndex !== -1 && VOL_CHARS.includes(volChar)) {
-                        frameArr[pitchIndex] = volChar;
-                    }
-                }
-                finalId += frameArr.join('');
-            });
-
-            if (!finalId) finalId = '0'.repeat(FRAME_SIZE);
-            return finalId;
+    if (!input) return '0'.repeat(FRAME_SIZE);
+    
+    // Clean up any accidental whitespace or newlines
+    input = input.trim();
+    
+    // Check if it's a valid raw ID string (all characters are in VOL_CHARS)
+    let isValidRaw = [...input].every(c => VOL_CHARS.includes(c));
+    
+    if (!input.includes('|') && !input.includes(':') && isValidRaw) {
+        // If length is a multiple of FRAME_SIZE, return as-is
+        if (input.length > 0 && input.length % FRAME_SIZE === 0) {
+            return input;
         }
+        // Optional safety fallback: pad or truncate if length is slightly off
+        if (input.length > 0) {
+            const remainder = input.length % FRAME_SIZE;
+            if (remainder !== 0) {
+                console.warn(`Raw ID length (${input.length}) is not a multiple of ${FRAME_SIZE}. Adjusting...`);
+                if (input.length > FRAME_SIZE) {
+                    return input.substring(0, input.length - remainder);
+                } else {
+                    return input.padEnd(FRAME_SIZE, '0');
+                }
+            }
+            return input;
+        }
+    }
+
+    const parts = input.split('|');
+    let finalId = "";
+    
+    parts.forEach(part => {
+        let frameArr = new Array(FRAME_SIZE).fill('0');
+        let regex = /([1-9a-zA-Z`~!@#$%^&*()_\-=\+,\.<>\/?])(?:[:](.))?/g;
+        let match;
+        while ((match = regex.exec(part)) !== null) {
+            let pitchChar = match[1];
+            let volChar = match[2] || '?'; 
+            
+            let pitchIndex = PITCH_CHARS.indexOf(pitchChar);
+            if (pitchIndex !== -1 && VOL_CHARS.includes(volChar)) {
+                frameArr[pitchIndex] = volChar;
+            }
+        }
+        finalId += frameArr.join('');
+    });
+
+    if (!finalId) finalId = '0'.repeat(FRAME_SIZE);
+    return finalId;
+}
 
         function generateRandomId(targetFrames = null) {
             let frames = targetFrames;
