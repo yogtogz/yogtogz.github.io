@@ -185,7 +185,6 @@
     <script>
         // --- CONSTANTS & CONFIG (83 PITCHES, 84 VOLUME LEVELS) ---
         const PITCH_CHARS = "123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ`~!@#$%^&*()-_=+,<.>/?"; // 83 Pitch Slots
-        console.log("DEBUG PITCH_CHARS length:", PITCH_CHARS.length);
         const VOL_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ`~!@#$%^&*()-_=+,<.>/?"; // 84 Volume Levels
         const FRAME_DURATION = 0.1; // 0.1 seconds per character
         const FRAME_SIZE = 83; // Exactly 83 pitch channels per frame
@@ -267,7 +266,6 @@
                     let volChar = match[2] || '?'; // Default to max volume ('?')
                     
                     let pitchIndex = PITCH_CHARS.indexOf(pitchChar);
-                    console.log("PitchIndex DEBUG PITCH_CHARS length:", PITCH_CHARS.length);
                     if (pitchIndex !== -1 && VOL_CHARS.includes(volChar)) {
                         frameArr[pitchIndex] = volChar;
                     }
@@ -527,7 +525,6 @@
                     let prefix = "";
                     for (let c = 0; c < prefixLen; c++) {
                         prefix += PITCH_CHARS[Math.floor(Math.random() * PITCH_CHARS.length)];
-                        console.log("prefix DEBUG PITCH_CHARS length:", PITCH_CHARS.length);
                     }
                     
                     const pl = { name: `Some ${prefix} Signals`, items: [] };
