@@ -246,10 +246,10 @@ window.addEventListener('DOMContentLoaded', () => {
         // --- AUDIO MATH & DECODING ---
         // --- AUDIO MATH & DECODING (UPDATED FOR 84 SLOTS & SEARCH FIX) ---
 function sanitizeId(input) {
-    if (!input) return '0'.repeat(83);
+    if (!input) return '0'.repeat(61);
     
-    // Direct raw ID bypass check (must be a multiple of 83)
-    if (!input.includes('|') && !input.includes(':') && input.length > 0 && input.length % 83 === 0) {
+    // Check if it's already a valid raw ID string
+    if (!input.includes('|') && !input.includes(':') && input.length > 0 && input.length % 61 === 0) {
         let isValidRaw = [...input].every(c => VOL_CHARS.includes(c));
         if (isValidRaw) return input;
     }
@@ -258,12 +258,13 @@ function sanitizeId(input) {
     let finalId = "";
     
     parts.forEach(part => {
-        let frameArr = new Array(83).fill('0');
-        let regex = /([1-9a-zA-Z`~!@#$%^&*()-_=+,<.>\/?])(?:[:](.))?/g;
+        let frameArr = new Array(61).fill('0');
+        // Regex strictly captures known Pitch Characters and an optional volume
+        let regex = /([1-9a-zA-Z])(?:[:](.))?/g;
         let match;
         while ((match = regex.exec(part)) !== null) {
             let pitchChar = match[1];
-            let volChar = match[2] || '?'; 
+            let volChar = match[2] || '?'; // Default to max volume
             
             let pitchIndex = PITCH_CHARS.indexOf(pitchChar);
             if (pitchIndex !== -1 && VOL_CHARS.includes(volChar)) {
@@ -273,17 +274,23 @@ function sanitizeId(input) {
         finalId += frameArr.join('');
     });
 
-    if (!finalId) finalId = '0'.repeat(83);
+    if (!finalId) finalId = '0'.repeat(61);
     return finalId;
 }
 
-function generateRandomId(numFrames = 1) {
+function generateRandomId(targetFrames = null) {
+    let frames = targetFrames;
+    if (!frames) frames = Math.floor(Math.random() * 3000) + 1;
+    
     let id = "";
-    for (let f = 0; f < numFrames; f++) {
-        for (let i = 0; i < 83; i++) {
-            // Pick across all 84 volume characters (0 = silence, 83 = ?)
-            let volIdx = Math.floor(Math.random() * 84);
-            id += VOL_CHARS[volIdx];
+    for (let i = 0; i < frames; i++) {
+        for (let j = 0; j < 84; j++) {
+            if (Math.random() > 0.15) {
+                id += "0"; // Silence
+            } else {
+                let volIdx = Math.floor(Math.random() * 84) + 1;
+                id += VOL_CHARS[volIdx];
+            }
         }
     }
     return id;
@@ -638,7 +645,7 @@ function switchPlaylistTab(tab) {
                     <canvas id="visualizer"></canvas>
                     <div class="controls">
                         <div class="play-btn" id="playBtn" onclick="togglePlay()"></div>
-<div class="time-display" id="timeDisplay">0:00 / ${formatTime((id.length * FRAME_DURATION) / 83)}</div>
+                        <div class="time-display" id="timeDisplay">0:00 / ${formatTime((id.length * FRAME_DURATION) / 83)}</div>
                         <div class="progress-bar" id="progressBar" onclick="seekAudio(event)">
                             <div class="progress-fill" id="progressFill"></div>
                         </div>
@@ -885,32 +892,36 @@ function audioBufferToWav(buffer) {
             visualizerCanvas.height = visualizerCanvas.parentElement.clientHeight - 48;
         }
 
-     function drawWaveformThumbnail(canvas, sequence) {
+      function drawWaveformThumbnail(canvas, id, isPlaylist = false) {
+    if(!canvas) return;
     const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
-    ctx.clearRect(0, 0, width, height);
-
-    const totalFrames = Math.floor(sequence.length / 83);
-    const frameWidth = width / totalFrames;
-
-    for (let f = 0; f < totalFrames; f++) {
-        const frameStr = sequence.substr(f * 83, 83);
-        let activeFreqs = [];
-        for (let i = 0; i < frameStr.length; i++) {
-            const volIdx = VOL_CHARS.indexOf(frameStr[i]);
-            if (volIdx > 0) {
-                activeFreqs.push({
-                    freq: 200 + ((i / 82) * 3800),
-                    amp: volIdx / 83
-                });
-            }
-        }
-
-        const x = f * frameWidth;
-        ctx.fillStyle = activeFreqs.length > 0 ? '#ff0000' : '#3d3d3d';
-        ctx.fillRect(x, height / 2 - (activeFreqs.length * 2), Math.max(frameWidth - 1, 1), Math.max(activeFreqs.length * 4, 2));
+    const w = 360, h = 202;
+    canvas.width = w; canvas.height = h;
+    
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+    
+    const block = id.substring(0, 84) || '0'.repeat(84);
+    const activeFreqs = [];
+    for (let i = 0; i < 84; i++) {
+        const volIdx = VOL_CHARS.indexOf(block[i]);
+        if (volIdx > 0) activeFreqs.push({ freq: 200 + ((i / 82) * 3800), amp: volIdx / 82 });
     }
+    if(activeFreqs.length === 0) activeFreqs.push({freq: 1000, amp: 0.1}); 
+
+    ctx.strokeStyle = isPlaylist ? 'var(--text-secondary)' : 'var(--accent)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    
+    for(let x=0; x<w; x++) {
+        let yOffset = 0;
+        activeFreqs.forEach(snd => {
+            yOffset += Math.sin(x * 0.05 * (snd.freq / 500)) * (h / 4) * snd.amp / activeFreqs.length;
+        });
+        if(x===0) ctx.moveTo(x, h/2 + yOffset);
+        else ctx.lineTo(x, h/2 + yOffset);
+    }
+    ctx.stroke();
 }
         function drawOscilloscope(timeOffset) {
     if(!visualizerCanvas || !visualizerCtx) return;
@@ -980,7 +991,18 @@ function audioBufferToWav(buffer) {
             seekTime = 0;
         }
 
-       
+       function scheduler() {
+    const totalFrames = Math.floor(currentSequence.length / 61);
+    while (nextNoteTime < audioCtx.currentTime + 0.1 && currentFrame < totalFrames) {
+        scheduleFrame(currentFrame, nextNoteTime);
+        nextNoteTime += FRAME_DURATION;
+        currentFrame++;
+    }
+    if (currentFrame >= totalFrames && nextNoteTime < audioCtx.currentTime) {
+        stopAudio();
+        updateProgressUI(totalFrames * FRAME_DURATION);
+    }
+}
     
         // Add this helper for deterministic randomness based on the ID character
 function mulberry32(a) {
@@ -992,63 +1014,67 @@ function mulberry32(a) {
     }
 }
 
-function scheduler() {
-    const totalFrames = Math.floor(currentSequence.length / 83);
-    while (nextFrameTime < audioCtx.currentTime + scheduleAheadTime) {
-        if (currentFrameIdx >= totalFrames) {
-            if (isLooping) {
-                currentFrameIdx = 0;
-            } else {
-                stopAudio();
-                break;
-            }
-        }
-        scheduleFrame(currentFrameIdx, nextFrameTime);
-        nextFrameTime += FRAME_DURATION;
-        currentFrameIdx++;
-    }
-    if (isPlaying) {
-        timerID = window.setTimeout(scheduler, lookahead);
-    }
-}
-
 function scheduleFrame(frameIdx, time) {
-    const frameStr = currentSequence.substr(frameIdx * 83, 83);
-    let totalVolumeReq = 0;
+    const blockStart = frameIdx * 84;
+    const block = currentSequence.substring(blockStart, blockStart + 84);
 
-    for (let i = 0; i < frameStr.length; i++) {
-        const vIdx = VOL_CHARS.indexOf(frameStr[i]);
+    if (!block || block.length < 84) return; 
+
+    const isFirstFrameAfterSeek = (frameIdx === Math.floor(seekTime / FRAME_DURATION));
+    const prevBlock = (frameIdx > 0 && !isFirstFrameAfterSeek) 
+        ? currentSequence.substring((frameIdx - 1) * 84, frameIdx * 84) : null;
+
+    const totalFrames = Math.floor(currentSequence.length / 84);
+
+    let totalVolumeReq = 0;
+    for (let i = 0; i < 84; i++) {
+        let vIdx = VOL_CHARS.indexOf(block[i]);
         if (vIdx > 0) totalVolumeReq += (vIdx / 83);
     }
+    if (totalVolumeReq === 0) return;
 
     let volumeScale = 1.0;
-    if (totalVolumeReq > 1.0) {
-        volumeScale = 1.0 / totalVolumeReq;
-    }
+    if (totalVolumeReq > 2) volumeScale = 2 / totalVolumeReq;
 
-    for (let i = 0; i < frameStr.length; i++) {
-        const volIdx = VOL_CHARS.indexOf(frameStr[i]);
-        if (volIdx > 0) {
-            const freq = 200 + ((i / 82) * 3800); // 82 divisor maps slot 82 to 4000Hz
-            const pitchVolume = (volIdx / 83) * volumeScale * 0.5; // 83 divisor normalizes volume
+    for (let i = 0; i < 84; i++) {
+        const volIdx = VOL_CHARS.indexOf(block[i]);
+        const isActive = (volIdx > 0);
+        const wasActive = prevBlock ? (prevBlock[i] === block[i]) : false;
 
+        if (isActive && !wasActive) {
+            let durationFrames = 1;
+            
+            for (let f = frameIdx + 1; f < totalFrames; f++) {
+                if (currentSequence[f * 84 + i] === block[i]) durationFrames++;
+                else break;
+            }
+
+            const durationInSecs = durationFrames * FRAME_DURATION;
+            const freq = 200 + ((i / 82) * 3800);
+            const pitchVolume = (volIdx / 82) * volumeScale * 0.5;
+            
             const osc = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine'; 
+            osc.frequency.value = freq;
+            
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(pitchVolume, time + 0.005);
+            gain.gain.setValueAtTime(pitchVolume, time + durationInSecs - 0.005);
+            gain.gain.linearRampToValueAtTime(0, time + durationInSecs);
 
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, time);
-
-            gainNode.gain.setValueAtTime(pitchVolume, time);
-            gainNode.gain.exponentialRampToValueAtTime(0.0001, time + FRAME_DURATION);
-
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
             osc.start(time);
-            osc.stop(time + FRAME_DURATION);
+            osc.stop(time + durationInSecs);
+            currentOscillators.push(osc);
         }
     }
+    currentOscillators = currentOscillators.filter(osc => osc.context.currentTime < time + 5);
 }
+// Replace drawOscilloscope
 
         function animateVisualizer() {
     if(!isPlaying) return;
@@ -1060,29 +1086,37 @@ function scheduleFrame(frameIdx, time) {
     animationFrameReq = requestAnimationFrame(animateVisualizer);
 }
 
-function updateProgressUI() {
-    if (!isPlaying || !currentSequence) return;
-    const total = (currentSequence.length / 83) * FRAME_DURATION;
-    const elapsed = audioCtx.currentTime - startTime;
-    const progress = Math.min((elapsed / total) * 100, 100);
+function updateProgressUI(time) {
+    const tDisp = document.getElementById('timeDisplay');
+    const pFill = document.getElementById('progressFill');
+    if(!tDisp || !pFill) return;
     
-    const progressBar = document.getElementById('progressBar');
-    if (progressBar) progressBar.style.width = progress + '%';
-    
-    const timeDisplay = document.getElementById('timeDisplay');
-    if (timeDisplay) {
-        timeDisplay.innerText = `${formatTime(elapsed)} / ${formatTime(total)}`;
+    const total = (currentSequence.length / 61) * FRAME_DURATION;
+    const safeTime = Math.min(time, total);
+    tDisp.innerText = `${formatTime(safeTime)} / ${formatTime(total)}`;
+    if (total > 0) {
+        pFill.style.width = `${(safeTime / total) * 100}%`;
+    } else {
+        pFill.style.width = `0%`;
     }
 }
-
-function seekAudio(percent) {
-    if (!currentSequence) return;
-    const total = (currentSequence.length / 83) * FRAME_DURATION;
-    const targetTime = total * percent;
+function seekAudio(e) {
+    if(!currentSequence) return;
+    const bar = document.getElementById('progressBar');
+    const rect = bar.getBoundingClientRect();
+    let percent = (e.clientX - rect.left) / rect.width;
+    percent = Math.max(0, Math.min(1, percent)); // Ensure valid range
     
-    currentFrameIdx = Math.floor(targetTime / FRAME_DURATION);
-    startTime = audioCtx.currentTime - targetTime;
-    nextFrameTime = audioCtx.currentTime;
+    const total = (currentSequence.length / 61) * FRAME_DURATION;
+    seekTime = percent * total;
+    
+    if(isPlaying) {
+        togglePlay(); 
+        togglePlay();
+    } else {
+        updateProgressUI(seekTime);
+        drawOscilloscope(seekTime);
+    }
 }
         // --- DATA ACTIONS ---
         async function toggleFavorite(id) {
