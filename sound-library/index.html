@@ -282,14 +282,15 @@
         let regex = /([1-9a-zA-Z`~!@#$%^&*()_\-=\+,\.<>\/?])(?:[:](.))?/g;
         let match;
         while ((match = regex.exec(part)) !== null) {
-            let pitchChar = match[1];
-            let volChar = match[2] || '?'; 
-            
-            let pitchIndex = PITCH_CHARS.indexOf(pitchChar);
-            if (pitchIndex !== -1 && VOL_CHARS.includes(volChar)) {
-                frameArr[pitchIndex] = volChar;
-            }
-        }
+    let pitchChar = match[1];
+    // Ensure it defaults to '?' when match[2] is undefined, NOT pitchChar
+    let volChar = match[2] || '?'; 
+    
+    let pitchIndex = PITCH_CHARS.indexOf(pitchChar);
+    if (pitchIndex !== -1 && VOL_CHARS.includes(volChar)) {
+        frameArr[pitchIndex] = volChar;
+    }
+}
         finalId += frameArr.join('');
     });
 
