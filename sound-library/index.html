@@ -238,6 +238,7 @@
         async function afterInitDB() {
             await initDB();
             checkSavedLogin();
+            refreshRecs();
         }
         window.addEventListener('DOMContentLoaded', () => {
             afterInitDB();
