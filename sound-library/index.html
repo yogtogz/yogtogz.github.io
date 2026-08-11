@@ -267,6 +267,7 @@
                     let volChar = match[2] || '?'; // Default to max volume ('?')
                     
                     let pitchIndex = PITCH_CHARS.indexOf(pitchChar);
+                    console.log("PitchIndex DEBUG PITCH_CHARS length:", PITCH_CHARS.length);
                     if (pitchIndex !== -1 && VOL_CHARS.includes(volChar)) {
                         frameArr[pitchIndex] = volChar;
                     }
@@ -526,6 +527,7 @@
                     let prefix = "";
                     for (let c = 0; c < prefixLen; c++) {
                         prefix += PITCH_CHARS[Math.floor(Math.random() * PITCH_CHARS.length)];
+                        console.log("prefix DEBUG PITCH_CHARS length:", PITCH_CHARS.length);
                     }
                     
                     const pl = { name: `Some ${prefix} Signals`, items: [] };
